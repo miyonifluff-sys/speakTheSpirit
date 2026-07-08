@@ -10,7 +10,7 @@ export interface LogEntry {
   timestamp: string;
 }
 
-export type LoginMethod = 'WALLET' | 'SOCIAL' | null;
+export type LoginMethod = 'MOCK' | null;
 
 interface GameContextType {
   // Navigation / Auth State
@@ -19,7 +19,7 @@ interface GameContextType {
   isLoggedIn: boolean;
   userWallet: string | null;
   loginMethod: LoginMethod;
-  handleLogin: (method: LoginMethod, identifier?: string) => void;
+  handleLogin: () => void;
   handleLogout: () => void;
 
   // Game Logic State
@@ -80,9 +80,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [isSongbeastRehomed, setIsSongbeastRehomed] = useState<boolean>(false);
 
   // Currencies & Inventory
-  const [cupcakes, setCupcakes] = useState<number>(4);
-  const [cucumbers, setCucumbers] = useState<number>(0);
-  const [tickets, setTickets] = useState<number>(1);
+  const [cupcakes, setCupcakesState] = useState<number>(0);
+  const [cucumbers, setCucumbersState] = useState<number>(0);
+  const [tickets, setTicketsState] = useState<number>(0);
   const [hasSwordOfTruth, setHasSwordOfTruth] = useState<boolean>(false);
   const [hasHolyWater, setHasHolyWater] = useState<boolean>(false);
 
@@ -90,6 +90,54 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [feedback, setFeedback] = useState<string>('');
   const [shakeTrigger, setShakeTrigger] = useState<boolean>(false);
   const [gameLogs, setGameLogs] = useState<LogEntry[]>([]);
+
+  // --- MOCK SMART CONTRACT BRIDGE (LocalStorage) ---
+  useEffect(() => {
+    const savedRewards = localStorage.getItem('sts_rewards');
+    if (savedRewards) {
+      try {
+        const { cupcakes: sCup, cucumbers: sCuc, tickets: sTix } = JSON.parse(savedRewards);
+        setCupcakesState(sCup);
+        setCucumbersState(sCuc);
+        setTicketsState(sTix);
+      } catch (e) {
+        console.error("Failed to parse saved rewards", e);
+      }
+    }
+  }, []);
+
+  const persistRewards = (newCupcakes: number, newCucumbers: number, newTickets: number) => {
+    localStorage.setItem('sts_rewards', JSON.stringify({
+      cupcakes: newCupcakes,
+      cucumbers: newCucumbers,
+      tickets: newTickets,
+    }));
+  };
+
+  // Wrappers for currency updates to ensure persistence
+  const setCupcakes = (val: number | ((prev: number) => number)) => {
+    setCupcakesState((prev) => {
+      const next = typeof val === 'function' ? val(prev) : val;
+      persistRewards(next, cucumbers, tickets);
+      return next;
+    });
+  };
+
+  const setCucumbers = (val: number | ((prev: number) => number)) => {
+    setCucumbersState((prev) => {
+      const next = typeof val === 'function' ? val(prev) : val;
+      persistRewards(cupcakes, next, tickets);
+      return next;
+    });
+  };
+
+  const setTickets = (val: number | ((prev: number) => number)) => {
+    setTicketsState((prev) => {
+      const next = typeof val === 'function' ? val(prev) : val;
+      persistRewards(cupcakes, cucumbers, next);
+      return next;
+    });
+  };
 
   // Logs helper
   const addLog = (text: string, type: LogEntry['type']) => {
@@ -112,17 +160,26 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Mock Authentication Functions
-  const handleLogin = (method: LoginMethod, identifier?: string) => {
+  const handleLogin = () => {
     setIsLoggedIn(true);
-    setLoginMethod(method);
-    if (method === 'WALLET') {
-      const mockAddress = identifier || "0x9F3...7E2a";
-      setUserWallet(mockAddress);
-      addLog(`Wallet Connected successfully: ${mockAddress}`, "system");
+    setLoginMethod('MOCK');
+    setUserWallet("0xMOCK_USER_VALIDATED");
+    
+    // Initialize starting rewards if first time
+    if (!localStorage.getItem('sts_rewards')) {
+      const startCupcakes = 5;
+      const startCucumbers = 5;
+      const startTickets = 1;
+      setCupcakesState(startCupcakes);
+      setCucumbersState(startCucumbers);
+      setTicketsState(startTickets);
+      persistRewards(startCupcakes, startCucumbers, startTickets);
+      addLog("New Player detected. Initial rewards minted: 5 Cupcakes, 5 Cucumbers.", "system");
     } else {
-      setUserWallet(null);
-      addLog(`Authenticated via social auth: ${identifier || 'PlayerOne@google.com'}`, "system");
+      addLog("Welcome back, Player. Rewards restored from bridge.", "system");
     }
+
+    addLog(`Authenticated via Unified Mock Auth: 0xMOCK_USER`, "system");
     setFeedback("Authentication successful! Welcome to the Valley.");
   };
 
@@ -143,9 +200,15 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setBattleShieldHp(100);
     setPortalActive(false);
     setIsSongbeastRehomed(false);
-    setCupcakes(4);
-    setCucumbers(0);
-    setTickets(1);
+    
+    const resetCupcakes = 5;
+    const resetCucumbers = 5;
+    const resetTickets = 1;
+    setCupcakesState(resetCupcakes);
+    setCucumbersState(resetCucumbers);
+    setTicketsState(resetTickets);
+    persistRewards(resetCupcakes, resetCucumbers, resetTickets);
+    
     setHasSwordOfTruth(false);
     setHasHolyWater(false);
     setFeedback('');
