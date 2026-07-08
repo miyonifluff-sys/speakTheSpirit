@@ -154,7 +154,7 @@ export default function BasecampShop() {
       </div>
 
       <div className="mt-6 pt-3 border-t-2 border-slate-700 flex justify-between items-center text-xs">
-        <span className="text-pink-400 font-bold animate-pulse">{feedback}</span>
+        <span className="text-pink-400 font-bold animate-pulse">{"Items synced! placeholder"}</span>
         <button 
           onClick={() => {
             setCurrentScreen('OVERWORLD');
