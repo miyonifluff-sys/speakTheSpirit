@@ -24,17 +24,6 @@ function GameContent() {
     isTransactionPending 
   } = useGame();
 
-  // Sync URL search params with GameContext state
-  useEffect(() => {
-    const screenParam = searchParams.get('screen');
-    if (screenParam && screenParam !== currentScreen) {
-      const validScreens = ['INTRO', 'OVERWORLD', 'QUEST', 'BATTLE', 'DEBRIEF', 'SHOP'];
-      if (validScreens.includes(screenParam)) {
-        setCurrentScreen(screenParam as any);
-      }
-    }
-  }, [searchParams, currentScreen, setCurrentScreen]);
-
   if (!isLoggedIn) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">

@@ -1,12 +1,14 @@
 'use client';
 
-import React from 'react';
+import React, { Suspense } from 'react';
 import { GameProvider } from '../context/GameContext';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <GameProvider>
-      {children}
-    </GameProvider>
+    <Suspense fallback={null}>
+      <GameProvider>
+        {children}
+      </GameProvider>
+    </Suspense>
   );
 }

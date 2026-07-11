@@ -1,9 +1,8 @@
-@AGENTS.md
-
-# Agent Guidelines
+# Project Instructions
 
 ## Build Validation
-- Run `npm run build` after every set of changes to verify the project still builds.
+- **Mandatory Build Check:** After making any code changes, you MUST run `npm run build` to ensure that the project compiles successfully and that no regressions were introduced.
+- This should be part of the **Validate** step in the Execution cycle.
 
 ## 🧠 State & Data Management Boundaries
 - Global game values (rewards, cupcakes, cucumbers, tickets, clearedIslands, hasHolyWater) MUST live exclusively inside `context/GameContext.tsx`.
@@ -30,3 +29,7 @@ To maintain code stability and prevent context clutter, strictly separate data l
 2. 🎨 UI & Presentation Layer (Rendering):
    - Standalone components (e.g., `BattleArea.tsx`, `BasecampShop.tsx`) should act as "pure" layout containers.
    - They must pull ready-to-use data values and callback triggers from `useGameContext()` and focus strictly on mapping that data to the screen using Tailwind and global classes.
+
+### 🧹 Code Quality: npm run lint
+- **What it does:** Runs static analysis over our TypeScript and Next.js components to catch syntax errors, unused variables, formatting bugs, and React hook dependency array mismatches before deployment.
+- **Hackathon Status:** Active. Build pipelines require strict lint compliance to prevent deployment failures on Vercel/Netlify.

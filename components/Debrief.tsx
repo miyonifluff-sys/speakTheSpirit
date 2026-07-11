@@ -3,6 +3,7 @@
 import React from 'react';
 import { useGame } from '../context/GameContext';
 import { addLog as emitGameLog } from '../utils/gameEvents';
+import { useGameContracts } from '../hooks/useGameContracts';
 
 export default function Debrief() {
   const { 
@@ -18,18 +19,29 @@ export default function Debrief() {
     clearIsland 
   } = useGame();
 
-  const handleGiveTicket = () => {
+  const { rescueSongbeastOnChain } = useGameContracts();
+
+  const handleGiveTicket = async () => {
     if (tickets <= 0) {
       setFeedback("Oh no! You don't have any Basecamp Tickets in your inventory.");
       return;
     }
-    setTickets(tickets - 1);
-    setIsSongbeastRehomed(true);
-    setCupcakes(prev => prev + 5);
-    setCucumbers(prev => prev + 2);
-    emitGameLog("Sent Barnaby safe to Basecamp via Ticket! Gained +5 Cupcakes and +2 Cucumbers!", "songbeast");
-    clearIsland('Faith Island');
-    setFeedback("Barnaby: 'Hooray! Thank you for rescuing me! See you back at the Castle!'");
+    
+    // Trigger on-chain rescue
+    // Note: In a real game, beastId and proof would come from the current quest state
+    const result = await rescueSongbeastOnChain("BARNABY_01", "PROOF_V3_SUNG_HARMONY");
+
+    if (result.success) {
+      setTickets(tickets - 1);
+      setIsSongbeastRehomed(true);
+      // Rewards (Cupcakes/Cucumbers) are now handled inside the hook's useEffect on confirmation
+      emitGameLog("On-chain rescue initiated for Barnaby!", "songbeast");
+      clearIsland('Faith Island');
+      setFeedback("Barnaby: 'Hooray! Thank you for rescuing me! See you back at the Castle!'");
+    } else {
+      // Error is handled by the hook's internal feedback system
+      setFeedback("The rescue ritual was interrupted by the blockchain.");
+    }
   };
 
   return (
@@ -43,7 +55,7 @@ export default function Debrief() {
         </div>
 
         <div className="bg-emerald-100 border-4 border-black p-6 rounded-2xl text-black shadow-[4px_4px_0px_#000] text-center max-w-xl mx-auto my-6 relative overflow-hidden">
-          <div className="absolute inset-0 bg-[radial-gradient(#10b981_1px,transparent_1px)] [background-size:20px_20px] opacity-15"></div>
+          <div className="absolute inset-0 bg-[radial-gradient(#10b981_1px,transparent_1px)] [background-size:20px_20px] opacity-15 pointer-events-none"></div>
           <div className="absolute top-4 left-6 text-2xl animate-float">🎵</div>
           <div className="absolute top-10 right-8 text-3xl animate-bounce">🎶</div>
           <div className="absolute bottom-6 left-12 text-xl animate-bounce">🌸</div>

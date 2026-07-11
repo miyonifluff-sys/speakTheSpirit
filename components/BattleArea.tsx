@@ -2,79 +2,19 @@
 
 import React from 'react';
 import { useGame } from '../context/GameContext';
-import { addLog as emitGameLog } from '../utils/gameEvents';
+import { BATTLE_ROUNDS } from '../utils/battleData';
 
 export default function BattleArea() {
   const { 
     battleShieldHp, 
-    setBattleShieldHp, 
     battleStep, 
-    setBattleStep, 
     feedback, 
-    setFeedback, 
-    triggerShake, 
     hasSwordOfTruth, 
-    setPortalActive, 
     setCurrentScreen, 
-    setFeedback: updateFeedback 
+    handleBattleAnswer,
+    handleUseSwordOfTruth,
+    handleTriggerPortal,
   } = useGame();
-
-  const battleRounds = [
-    {
-      question: "For God so ________ the world...",
-      correct: "Loved",
-      options: ["Hated", "Loved", "Forgot", "Created"],
-    },
-    {
-      question: "...that He gave His only begotten ________...",
-      correct: "Son",
-      options: ["Servant", "Prophet", "Son", "Book"],
-    },
-    {
-      question: "...that whoever believes in Him should not perish but have eternal ________.",
-      correct: "Life",
-      options: ["Riches", "Life", "Fame", "Comfort"],
-    }
-  ];
-
-  const handleBattleAnswer = (answer: string) => {
-    const currentRound = battleRounds[battleStep];
-    if (answer === currentRound.correct) {
-      emitGameLog(`Correct! Selected "${answer}". The Silencer's shield takes damage!`, "battle");
-      const nextHp = Math.max(0, battleShieldHp - 33);
-      setBattleShieldHp(nextHp);
-      if (battleStep < 2) {
-        setBattleStep(battleStep + 1);
-        setFeedback("Holy frequencies matching! Keep decoding!");
-      } else {
-        setBattleShieldHp(0);
-        setFeedback("Shield fully neutralized! The Songbeast is ready to be restored!");
-        emitGameLog("The Silencer's noise shield is down! Trigger the restoration portal!", "system");
-      }
-    } else {
-      triggerShake();
-      setFeedback("Static interference! That word didn't match the vibration of Truth.");
-      emitGameLog(`Incorrect answer "${answer}". The Silencer's shield deflected the strike.`, "battle");
-    }
-  };
-
-  const handleUseSwordOfTruth = () => {
-    if (!hasSwordOfTruth) return;
-    emitGameLog("You raise the Sword of Truth! Pure radiant light pierces the static barrier!", "battle");
-    setBattleShieldHp(0);
-    setBattleStep(2);
-    setFeedback("The Sword of Truth instantly shattered the Silencer's barrier!");
-  };
-
-  const handleTriggerPortal = () => {
-    setPortalActive(true);
-    emitGameLog("Activating Born Again Portal... Restoring frequencies!", "system");
-    setTimeout(() => {
-      setPortalActive(false);
-      setCurrentScreen('DEBRIEF');
-      emitGameLog("Songbeast Barnaby restored successfully! Entering debrief phase.", "songbeast");
-    }, 2500);
-  };
 
   return (
     <div className="flex-1 flex flex-col justify-between">
@@ -137,13 +77,13 @@ export default function BattleArea() {
             <div>
               <div className="flex justify-between items-center border-b border-slate-800 pb-2 mb-3">
                 <span className="text-yellow-400 font-black text-xs uppercase">Decryption Cipher</span>
-                <span className="text-slate-400 text-xs">Round {battleStep + 1} of 3</span>
+                <span className="text-slate-400 text-xs">Round {battleStep + 1} of {BATTLE_ROUNDS.length}</span>
               </div>
               <p className="text-sm font-black text-center text-slate-200 py-3 bg-slate-900 border border-slate-700 rounded-lg px-2">
-                {battleRounds[battleStep].question}
+                {BATTLE_ROUNDS[battleStep].question}
               </p>
               <div className="grid grid-cols-2 gap-3 mt-4">
-                {battleRounds[battleStep].options.map((opt, idx) => (
+                {BATTLE_ROUNDS[battleStep].options.map((opt, idx) => (
                   <button key={idx} onClick={() => handleBattleAnswer(opt)} className="bg-purple-600 hover:bg-purple-500 text-white font-extrabold py-2.5 rounded-lg neo-btn text-sm uppercase">
                     {opt}
                   </button>

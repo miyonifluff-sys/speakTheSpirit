@@ -41,7 +41,7 @@ export default function QuestRiddle() {
         </div>
 
         <div className="bg-amber-100 border-4 border-black p-6 rounded-2xl flex flex-col items-center justify-center text-black shadow-[4px_4px_0px_#000] relative overflow-hidden">
-          <div className="absolute inset-0 bg-[radial-gradient(#eab308_1px,transparent_1px)] [background-size:16px_16px] opacity-20"></div>
+          <div className="absolute inset-0 bg-[radial-gradient(#eab308_1px,transparent_1px)] [background-size:16px_16px] opacity-20 pointer-events-none"></div>
           <h4 className="font-black text-sm uppercase tracking-wider text-amber-900 mb-2">🧱 The Crumbling Wall 🧱</h4>
           
           <div className="w-full max-w-sm flex flex-col gap-1 border-2 border-black bg-stone-300 p-2 rounded-lg mb-4 shadow-inner">

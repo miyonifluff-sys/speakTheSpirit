@@ -1,10 +1,54 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useGame } from '../context/GameContext';
+import { supabase } from '../services/supabaseService';
 
 export default function AuthGate() {
-  const { handleLogin, triggerShake, shakeTrigger } = useGame();
+  const { shakeTrigger, setFeedback, feedback, triggerShake } = useGame();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [isError, setIsError] = useState(false);
+
+  const handleAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    setFeedback('');
+    setIsError(false);
+    
+    if (password.length < 6) {
+      setIsError(true);
+      setFeedback("Secret passwords must be at least 6 characters long! 🛡️");
+      triggerShake();
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      if (isSignUp) {
+        const { error } = await supabase.auth.signUp({ email, password });
+        if (error) throw error;
+        setIsError(false);
+        setFeedback("Account created! Please check your email to confirm. ✨");
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        setIsError(false);
+        setFeedback("Welcome back to the Valley! 🚀");
+      }
+    } catch (error: unknown) {
+      console.error("Auth error:", error);
+      const errorMessage = error instanceof Error ? error.message : "Oops! Something went wrong. Try again!";
+      setIsError(true);
+      setFeedback(errorMessage);
+      triggerShake();
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className={`w-full max-w-md mx-auto my-12 p-8 bg-slate-800 border-4 border-black rounded-2xl shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] ${shakeTrigger ? 'animate-shake-box' : ''}`}>
@@ -14,27 +58,71 @@ export default function AuthGate() {
         <p className="text-xs text-slate-400 font-semibold uppercase mt-2">Valley Gate Authorization</p>
       </div>
 
-      <div className="space-y-6">
-        <div className="bg-slate-900/80 p-6 border-3 border-black rounded-xl shadow-[3px_3px_0px_#000] text-center">
+      <form onSubmit={handleAuth} className="space-y-6">
+        <div className="bg-slate-900/80 p-6 border-3 border-black rounded-xl shadow-[3px_3px_0px_#000]">
           <div className="flex items-center justify-center gap-2 mb-4">
             <span className="text-2xl">✨</span>
-            <h3 className="font-extrabold text-sm text-cyan-400 uppercase tracking-wide">Unified Authentication</h3>
+            <h3 className="font-extrabold text-sm text-cyan-400 uppercase tracking-wide">
+              {isSignUp ? 'Create Your Hero Account' : 'Return to the Valley'}
+            </h3>
           </div>
-          <p className="text-xs text-slate-300 leading-relaxed mb-6">
-            Sign in with your Google, Web3 Wallet, or Social account. We'll automatically bridge your rewards and items.
-          </p>
+          
+          <div className="space-y-4 mb-6">
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1 ml-1">Spirit Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="hero@example.com"
+                className="w-full bg-slate-800 border-2 border-black p-3 rounded-lg text-white placeholder-slate-600 focus:ring-2 focus:ring-yellow-400 outline-none transition-all font-medium"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1 ml-1">Secret Password</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full bg-slate-800 border-2 border-black p-3 rounded-lg text-white placeholder-slate-600 focus:ring-2 focus:ring-yellow-400 outline-none transition-all font-medium"
+                required
+              />
+            </div>
+          </div>
+
+          {feedback && (
+            <div className={`mb-6 p-3 border-2 text-xs font-bold rounded-lg text-center animate-bounce ${
+              isError 
+                ? 'bg-red-500/20 border-red-500 text-red-200' 
+                : 'bg-green-500/20 border-green-500 text-green-200'
+            }`}>
+              {feedback}
+            </div>
+          )}
 
           <button
-            onClick={handleLogin}
-            className="w-full bg-gradient-to-r from-indigo-600 via-pink-500 to-yellow-500 hover:brightness-110 text-white font-black text-sm uppercase py-4 rounded-lg border-2 border-black neo-btn transition-all"
+            type="submit"
+            disabled={loading}
+            className="w-full bg-gradient-to-r from-indigo-600 via-pink-500 to-yellow-500 hover:brightness-110 disabled:grayscale text-white font-black text-sm uppercase py-4 rounded-lg border-2 border-black neo-btn transition-all"
           >
-            🚀 Sign in with Google / Web3 Account
+            {loading ? 'Connecting...' : isSignUp ? '🚀 Create Account' : '🚀 Enter Valley'}
           </button>
         </div>
+      </form>
+
+      <div className="mt-6 text-center">
+        <button 
+          onClick={() => setIsSignUp(!isSignUp)}
+          className="text-xs font-bold text-cyan-400 hover:text-cyan-300 underline underline-offset-4 transition-colors"
+        >
+          {isSignUp ? "Already a hero? Sign In" : "New to the Valley? Create Account"}
+        </button>
       </div>
 
       <div className="mt-8 text-[10px] text-center text-slate-500 font-bold leading-normal">
-        🔐 Unified Mock Auth enabled. Rewards are persisted via LocalStorage bridge.
+        🔐 Secure Gateway enabled. Your treasures are safe with Supabase.
       </div>
     </div>
   );

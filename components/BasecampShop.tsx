@@ -3,23 +3,24 @@
 import React from 'react';
 import { useGame } from '../context/GameContext';
 import { addLog } from '../utils/gameEvents';
+import { useGameContracts } from '../hooks/useGameContracts';
 
 export default function BasecampShop() {
   const { 
     cupcakes, 
+    setCupcakes,
     cucumbers, 
-    setCupcakes, 
     setCucumbers, 
     tickets, 
     setTickets, 
     hasSwordOfTruth, 
-    setHasSwordOfTruth, 
     hasHolyWater, 
-    setHasHolyWater, 
     setCurrentScreen, 
     setFeedback, 
     triggerShake 
   } = useGame();
+
+  const { purchaseItemOnChain } = useGameContracts();
 
   return (
     <div className="flex-1 flex flex-col justify-between">
@@ -42,7 +43,7 @@ export default function BasecampShop() {
           <div>
             <p className="text-pink-400 font-bold text-xs uppercase">Basecamp Armory & Supplies</p>
             <p className="text-sm italic text-slate-200 mt-1">
-              {"\"Welcome, Messenger! Trade your earned sweets for survival items. Got some Cucumbers? I'll buy them too!\""}
+              {"Welcome, Messenger! Trade your earned sweets for survival items. Got some Cucumbers? I'll buy them too!"}
             </p>
           </div>
         </div>
@@ -58,11 +59,10 @@ export default function BasecampShop() {
               </div>
             </div>
             <button
-              onClick={() => {
+              onClick={async () => {
                 if (cupcakes >= 3) {
                   setCupcakes(cupcakes - 3);
-                  setTickets(tickets + 1);
-                  addLog("Bought 1 Basecamp Ticket for 3 Cupcakes.", "shop");
+                  await purchaseItemOnChain('TICKET', 3);
                 } else {
                   triggerShake();
                   setFeedback("Insufficient Cupcakes! Go clear Faith Island or sell Cucumbers!");
@@ -85,11 +85,10 @@ export default function BasecampShop() {
             </div>
             <button
               disabled={hasSwordOfTruth}
-              onClick={() => {
+              onClick={async () => {
                 if (cupcakes >= 8) {
                   setCupcakes(cupcakes - 8);
-                  setHasSwordOfTruth(true);
-                  addLog("Obtained the Sword of Truth! Unleash its power in battle.", "shop");
+                  await purchaseItemOnChain('SWORD', 8);
                 } else {
                   triggerShake();
                   setFeedback("Insufficient Cupcakes for the Sword of Truth!");
@@ -106,17 +105,16 @@ export default function BasecampShop() {
               <span className="text-3xl">🧪</span>
               <div>
                 <h4 className="font-extrabold text-sm text-slate-100">Holy Water Spray</h4>
-                <p className="text-[10px] text-slate-400">Breaches Love Island's Static Barrier.</p>
+                <p className="text-[10px] text-slate-400">{"Breaches Love Island's Static Barrier."}</p>
                 <span className="text-xs font-black text-pink-400">{hasHolyWater ? "OWNED" : "Cost: 5 Cupcakes 🧁"}</span>
               </div>
             </div>
             <button
               disabled={hasHolyWater}
-              onClick={() => {
+              onClick={async () => {
                 if (cupcakes >= 5) {
                   setCupcakes(cupcakes - 5);
-                  setHasHolyWater(true);
-                  addLog("Purchased Holy Water Spray! Love Island can now be penetrated.", "shop");
+                  await purchaseItemOnChain('WATER', 5);
                 } else {
                   triggerShake();
                   setFeedback("Insufficient Cupcakes for Holy Water Spray!");
@@ -154,7 +152,7 @@ export default function BasecampShop() {
       </div>
 
       <div className="mt-6 pt-3 border-t-2 border-slate-700 flex justify-between items-center text-xs">
-        <span className="text-pink-400 font-bold animate-pulse">{"Items synced! placeholder"}</span>
+        <span className="text-pink-400 font-bold animate-pulse">{"Items synced with database!"}</span>
         <button 
           onClick={() => {
             setCurrentScreen('OVERWORLD');

@@ -12,7 +12,7 @@ export default function GameHeader() {
     hasHolyWater, 
     handleResetGame, 
     handleLogout,
-    userWallet,
+    userId,
     loginMethod
   } = useGame();
 
@@ -24,12 +24,12 @@ export default function GameHeader() {
           <h1 className="text-xl font-black tracking-wider uppercase">Speak The Spirit</h1>
           <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2.5 text-[10px] font-bold text-black/75 uppercase">
             <span>Hackathon Prototype v1.0</span>
-            {userWallet && (
+            {userId && (
               <span className="bg-black/10 px-1.5 py-0.5 rounded flex items-center gap-1">
-                🦊 {userWallet}
+                👤 {userId.substring(0, 8)}...
               </span>
             )}
-            {!userWallet && loginMethod && (
+            {!userId && loginMethod && (
               <span className="bg-black/10 px-1.5 py-0.5 rounded flex items-center gap-1">
                 ✉️ Social Logged In
               </span>
