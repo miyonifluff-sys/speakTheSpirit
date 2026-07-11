@@ -1,6 +1,13 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { createClient } from '@supabase/supabase-js';
+import { addLog as emitGameLog } from '../utils/gameEvents';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export type Screen = 'INTRO' | 'OVERWORLD' | 'QUEST' | 'BATTLE' | 'DEBRIEF' | 'SHOP';
 
@@ -48,6 +55,10 @@ interface GameContextType {
   hasHolyWater: boolean;
   setHasHolyWater: (val: boolean) => void;
 
+  // Progression Tracking
+  clearedIslands: string[];
+  clearIsland: (islandName: string) => void;
+
   // Interface Feedbacks
   feedback: string;
   setFeedback: (fb: string) => void;
@@ -57,7 +68,6 @@ interface GameContextType {
   setGameLogs: React.Dispatch<React.SetStateAction<LogEntry[]>>;
 
   // Actions
-  addLog: (text: string, type: LogEntry['type']) => void;
   triggerShake: () => void;
   handleResetGame: () => void;
 }
@@ -85,6 +95,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [tickets, setTicketsState] = useState<number>(0);
   const [hasSwordOfTruth, setHasSwordOfTruth] = useState<boolean>(false);
   const [hasHolyWater, setHasHolyWater] = useState<boolean>(false);
+
+  // Progression
+  const [clearedIslands, setClearedIslands] = useState<string[]>([]);
 
   // Visual / Feedback State
   const [feedback, setFeedback] = useState<string>('');
@@ -114,11 +127,124 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     }));
   };
 
+  // --- SUPABASE DATABASE INTEGRATION ---
+  const fetchProfile = async (wallet: string) => {
+    try {
+      emitGameLog("Fetching player profile from Supabase...", "system");
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('wallet', wallet)
+        .maybeSingle();
+
+      if (error) {
+        console.error("Error fetching profile from Supabase:", error);
+        emitGameLog(`Database error: ${error.message}. Using offline fallback.`, "system");
+        loadOfflineFallback();
+        return;
+      }
+
+      if (data) {
+        setCupcakesState(data.cupcakes ?? 5);
+        setCucumbersState(data.cucumbers ?? 5);
+        setTicketsState(data.tickets ?? 1);
+        
+        // Support only clearedIslands
+        const loadedIslands = data.clearedIslands || [];
+        setClearedIslands(loadedIslands);
+        
+        persistRewards(data.cupcakes ?? 5, data.cucumbers ?? 5, data.tickets ?? 1);
+        emitGameLog(`Profile loaded successfully. Cleared islands: ${loadedIslands.length > 0 ? loadedIslands.join(', ') : 'None'}.`, "system");
+      } else {
+        // Create new profile row in Supabase
+        emitGameLog("Creating new player profile on Supabase...", "system");
+        const newProfile = {
+          wallet: wallet,
+          cupcakes: 5,
+          cucumbers: 5,
+          tickets: 1,
+          clearedIslands: [],
+        };
+
+        const { error: insertError } = await supabase
+          .from('profiles')
+          .insert([newProfile]);
+
+        if (insertError) {
+          console.error("Error creating profile in Supabase:", insertError);
+          emitGameLog(`Database error: ${insertError.message}. Using offline fallback.`, "system");
+          loadOfflineFallback();
+        } else {
+          setCupcakesState(5);
+          setCucumbersState(5);
+          setTicketsState(1);
+          setClearedIslands([]);
+          persistRewards(5, 5, 1);
+          emitGameLog("New profile created and initialized.", "system");
+        }
+      }
+    } catch (err: any) {
+      console.error("Supabase profile fetch exception:", err);
+      emitGameLog("Database exception. Using offline fallback.", "system");
+      loadOfflineFallback();
+    }
+  };
+
+  const loadOfflineFallback = () => {
+    const savedRewards = localStorage.getItem('sts_rewards');
+    if (savedRewards) {
+      try {
+        const { cupcakes: sCup, cucumbers: sCuc, tickets: sTix } = JSON.parse(savedRewards);
+        setCupcakesState(sCup);
+        setCucumbersState(sCuc);
+        setTicketsState(sTix);
+      } catch (e) {
+        console.error("Failed to parse saved rewards", e);
+      }
+    } else {
+      setCupcakesState(5);
+      setCucumbersState(5);
+      setTicketsState(1);
+    }
+  };
+
+  const saveProfile = async (wallet: string, updatedFields: {
+    cupcakes?: number;
+    cucumbers?: number;
+    tickets?: number;
+    clearedIslands?: string[];
+  }) => {
+    try {
+      const payload: any = {};
+      if (updatedFields.cupcakes !== undefined) payload.cupcakes = updatedFields.cupcakes;
+      if (updatedFields.cucumbers !== undefined) payload.cucumbers = updatedFields.cucumbers;
+      if (updatedFields.tickets !== undefined) payload.tickets = updatedFields.tickets;
+      if (updatedFields.clearedIslands !== undefined) {
+        payload.clearedIslands = updatedFields.clearedIslands;
+      }
+
+      const { error } = await supabase
+        .from('profiles')
+        .update(payload)
+        .eq('wallet', wallet);
+
+      if (error) {
+        console.error("Error updating profile in Supabase:", error);
+        emitGameLog(`Failed to sync with Supabase: ${error.message}`, "system");
+      }
+    } catch (err) {
+      console.error("Supabase profile update exception:", err);
+    }
+  };
+
   // Wrappers for currency updates to ensure persistence
   const setCupcakes = (val: number | ((prev: number) => number)) => {
     setCupcakesState((prev) => {
       const next = typeof val === 'function' ? val(prev) : val;
       persistRewards(next, cucumbers, tickets);
+      if (userWallet) {
+        saveProfile(userWallet, { cupcakes: next });
+      }
       return next;
     });
   };
@@ -127,6 +253,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setCucumbersState((prev) => {
       const next = typeof val === 'function' ? val(prev) : val;
       persistRewards(cupcakes, next, tickets);
+      if (userWallet) {
+        saveProfile(userWallet, { cucumbers: next });
+      }
       return next;
     });
   };
@@ -135,23 +264,25 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setTicketsState((prev) => {
       const next = typeof val === 'function' ? val(prev) : val;
       persistRewards(cupcakes, cucumbers, next);
+      if (userWallet) {
+        saveProfile(userWallet, { tickets: next });
+      }
       return next;
     });
   };
 
-  // Logs helper
-  const addLog = (text: string, type: LogEntry['type']) => {
-    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    setGameLogs((prev) => [{ text, type, timestamp: time }, ...prev].slice(0, 50));
+  // Progression Tracking Clear Island
+  const clearIsland = async (islandName: string) => {
+    setClearedIslands((prev) => {
+      if (prev.includes(islandName)) return prev;
+      const next = [...prev, islandName];
+      if (userWallet) {
+        saveProfile(userWallet, { clearedIslands: next });
+      }
+      return next;
+    });
+    emitGameLog(`Cleared island progression updated: ${islandName}!`, "system");
   };
-
-  // Safe client-side initial loading log
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      addLog("System initialized. Awaiting player validation.", "system");
-    }, 50);
-    return () => clearTimeout(timer);
-  }, []);
 
   // Visual shaker helper
   const triggerShake = () => {
@@ -160,26 +291,16 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Mock Authentication Functions
-  const handleLogin = () => {
+
+  // Mock Authentication Functions
+  const handleLogin = async () => {
     setIsLoggedIn(true);
     setLoginMethod('MOCK');
-    setUserWallet("0xMOCK_USER_VALIDATED");
+    const wallet = "0xMOCK_USER_VALIDATED";
+    setUserWallet(wallet);
     
-    // Initialize starting rewards if first time
-    if (!localStorage.getItem('sts_rewards')) {
-      const startCupcakes = 5;
-      const startCucumbers = 5;
-      const startTickets = 1;
-      setCupcakesState(startCupcakes);
-      setCucumbersState(startCucumbers);
-      setTicketsState(startTickets);
-      persistRewards(startCupcakes, startCucumbers, startTickets);
-      addLog("New Player detected. Initial rewards minted: 5 Cupcakes, 5 Cucumbers.", "system");
-    } else {
-      addLog("Welcome back, Player. Rewards restored from bridge.", "system");
-    }
-
-    addLog(`Authenticated via Unified Mock Auth: 0xMOCK_USER`, "system");
+    // Fetch profile from Supabase
+    await fetchProfile(wallet);
     setFeedback("Authentication successful! Welcome to the Valley.");
   };
 
@@ -188,11 +309,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setUserWallet(null);
     setLoginMethod(null);
     setCurrentScreen('INTRO');
-    addLog("Player logged out. Connection closed.", "system");
+    emitGameLog("Player logged out. Connection closed.", "system");
   };
 
   // Reset Progression State
-  const handleResetGame = () => {
+  const handleResetGame = async () => {
     setCurrentScreen('INTRO');
     setIntroStep(0);
     setQuestObjectClicked(false);
@@ -207,12 +328,23 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setCupcakesState(resetCupcakes);
     setCucumbersState(resetCucumbers);
     setTicketsState(resetTickets);
-    persistRewards(resetCupcakes, resetCucumbers, resetTickets);
+    setClearedIslands([]);
     
     setHasSwordOfTruth(false);
     setHasHolyWater(false);
     setFeedback('');
-    addLog("Game values reset to start. Starting over...", "system");
+    emitGameLog("Game values reset to start. Starting over...", "system");
+
+    if (userWallet) {
+      await saveProfile(userWallet, {
+        cupcakes: resetCupcakes,
+        cucumbers: resetCucumbers,
+        tickets: resetTickets,
+        clearedIslands: [],
+      });
+    } else {
+      persistRewards(resetCupcakes, resetCucumbers, resetTickets);
+    }
   };
 
   return (
@@ -250,6 +382,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         hasHolyWater,
         setHasHolyWater,
 
+        clearedIslands,
+        clearIsland,
+
         feedback,
         setFeedback,
         shakeTrigger,
@@ -257,7 +392,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         gameLogs,
         setGameLogs,
 
-        addLog,
         triggerShake,
         handleResetGame,
       }}

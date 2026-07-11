@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useGame } from '../context/GameContext';
+import { addLog as emitGameLog } from '../utils/gameEvents';
 
 export default function Debrief() {
   const { 
@@ -14,7 +15,7 @@ export default function Debrief() {
     feedback, 
     setFeedback, 
     setCurrentScreen, 
-    addLog 
+    clearIsland 
   } = useGame();
 
   const handleGiveTicket = () => {
@@ -26,7 +27,8 @@ export default function Debrief() {
     setIsSongbeastRehomed(true);
     setCupcakes(prev => prev + 5);
     setCucumbers(prev => prev + 2);
-    addLog("Sent Barnaby safe to Basecamp via Ticket! Gained +5 Cupcakes and +2 Cucumbers!", "songbeast");
+    emitGameLog("Sent Barnaby safe to Basecamp via Ticket! Gained +5 Cupcakes and +2 Cucumbers!", "songbeast");
+    clearIsland('Faith Island');
     setFeedback("Barnaby: 'Hooray! Thank you for rescuing me! See you back at the Castle!'");
   };
 

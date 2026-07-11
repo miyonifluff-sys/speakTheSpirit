@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useGame } from '../context/GameContext';
+import { addLog } from '../utils/gameEvents';
 
 export default function QuestRiddle() {
   const { 
@@ -9,7 +10,6 @@ export default function QuestRiddle() {
     setQuestObjectClicked, 
     setCurrentScreen, 
     setFeedback, 
-    addLog, 
     setBattleShieldHp, 
     setBattleStep 
   } = useGame();

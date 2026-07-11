@@ -1,10 +1,17 @@
 'use client';
 
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { useGame } from '../context/GameContext';
 
 export default function ConsoleLog() {
   const { gameLogs, setGameLogs } = useGame();
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+    }
+  }, [gameLogs]);
 
   return (
     <footer className="w-full max-w-4xl bg-slate-950 text-slate-400 p-4 mt-6 rounded-xl border-4 border-black neo-card h-48 flex flex-col">
@@ -21,7 +28,10 @@ export default function ConsoleLog() {
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto font-mono text-xs space-y-1.5 scrollbar-thin scrollbar-thumb-slate-800">
+      <div 
+        ref={scrollContainerRef}
+        className="flex-1 overflow-y-auto font-mono text-xs space-y-1.5 scrollbar-thin scrollbar-thumb-slate-800"
+      >
         {gameLogs.length === 0 ? (
           <p className="text-slate-700 italic text-center pt-8">Console empty. Actions will be logged here in real-time.</p>
         ) : (

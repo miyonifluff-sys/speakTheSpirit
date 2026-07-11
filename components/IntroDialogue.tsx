@@ -2,9 +2,10 @@
 
 import React, { useState } from 'react';
 import { useGame } from '../context/GameContext';
+import { addLog } from '../utils/gameEvents';
 
 export default function IntroDialogue() {
-  const { introStep, setIntroStep, setCurrentScreen, addLog } = useGame();
+  const { introStep, setIntroStep, setCurrentScreen } = useGame();
 
   const handleNext = () => {
     const steps = [

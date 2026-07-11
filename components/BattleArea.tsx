@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useGame } from '../context/GameContext';
+import { addLog as emitGameLog } from '../utils/gameEvents';
 
 export default function BattleArea() {
   const { 
@@ -11,7 +12,6 @@ export default function BattleArea() {
     setBattleStep, 
     feedback, 
     setFeedback, 
-    addLog, 
     triggerShake, 
     hasSwordOfTruth, 
     setPortalActive, 
@@ -40,7 +40,7 @@ export default function BattleArea() {
   const handleBattleAnswer = (answer: string) => {
     const currentRound = battleRounds[battleStep];
     if (answer === currentRound.correct) {
-      addLog(`Correct! Selected "${answer}". The Silencer's shield takes damage!`, "battle");
+      emitGameLog(`Correct! Selected "${answer}". The Silencer's shield takes damage!`, "battle");
       const nextHp = Math.max(0, battleShieldHp - 33);
       setBattleShieldHp(nextHp);
       if (battleStep < 2) {
@@ -49,18 +49,18 @@ export default function BattleArea() {
       } else {
         setBattleShieldHp(0);
         setFeedback("Shield fully neutralized! The Songbeast is ready to be restored!");
-        addLog("The Silencer's noise shield is down! Trigger the restoration portal!", "system");
+        emitGameLog("The Silencer's noise shield is down! Trigger the restoration portal!", "system");
       }
     } else {
       triggerShake();
       setFeedback("Static interference! That word didn't match the vibration of Truth.");
-      addLog(`Incorrect answer "${answer}". The Silencer's shield deflected the strike.`, "battle");
+      emitGameLog(`Incorrect answer "${answer}". The Silencer's shield deflected the strike.`, "battle");
     }
   };
 
   const handleUseSwordOfTruth = () => {
     if (!hasSwordOfTruth) return;
-    addLog("You raise the Sword of Truth! Pure radiant light pierces the static barrier!", "battle");
+    emitGameLog("You raise the Sword of Truth! Pure radiant light pierces the static barrier!", "battle");
     setBattleShieldHp(0);
     setBattleStep(2);
     setFeedback("The Sword of Truth instantly shattered the Silencer's barrier!");
@@ -68,11 +68,11 @@ export default function BattleArea() {
 
   const handleTriggerPortal = () => {
     setPortalActive(true);
-    addLog("Activating Born Again Portal... Restoring frequencies!", "system");
+    emitGameLog("Activating Born Again Portal... Restoring frequencies!", "system");
     setTimeout(() => {
       setPortalActive(false);
       setCurrentScreen('DEBRIEF');
-      addLog("Songbeast Barnaby restored successfully! Entering debrief phase.", "songbeast");
+      emitGameLog("Songbeast Barnaby restored successfully! Entering debrief phase.", "songbeast");
     }, 2500);
   };
 

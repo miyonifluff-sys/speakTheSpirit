@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useGame } from '../context/GameContext';
+import { addLog } from '../utils/gameEvents';
 
 export default function BasecampShop() {
   const { 
@@ -17,8 +18,7 @@ export default function BasecampShop() {
     setHasHolyWater, 
     setCurrentScreen, 
     setFeedback, 
-    triggerShake, 
-    addLog 
+    triggerShake 
   } = useGame();
 
   return (

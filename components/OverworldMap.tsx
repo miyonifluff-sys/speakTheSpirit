@@ -2,9 +2,10 @@
 
 import React from 'react';
 import { useGame } from '../context/GameContext';
+import { addLog } from '../utils/gameEvents';
 
 export default function OverworldMap() {
-  const { setCurrentScreen, addLog, setFeedback, feedback, triggerShake, hasHolyWater } = useGame();
+  const { setCurrentScreen, setFeedback, feedback, triggerShake, hasHolyWater, clearedIslands } = useGame();
 
   return (
     <div className="flex-1 flex flex-col justify-between">
@@ -55,20 +56,35 @@ export default function OverworldMap() {
 
           <button
             onClick={() => {
-              triggerShake();
-              addLog("Tried to enter Hope Island, but it is locked in static mist.", "system");
-              setFeedback("Hope Island is shrouded in toxic mist! Complete Faith Island first to unlock it.");
+              if (clearedIslands.includes('Faith Island')) {
+                addLog("Traveling to Hope Island...", "system");
+                setCurrentScreen('QUEST'); // In a real app, this would be a different screen/quest
+              } else {
+                triggerShake();
+                addLog("Tried to enter Hope Island, but it is locked in static mist.", "system");
+                setFeedback("Hope Island is shrouded in toxic mist! Complete Faith Island first to unlock it.");
+              }
             }}
-            className="bg-slate-700 hover:bg-slate-650 text-slate-400 p-4 rounded-xl neo-card flex flex-col justify-between text-left h-36 relative cursor-not-allowed border-dashed"
+            className={`${
+              clearedIslands.includes('Faith Island') 
+                ? 'bg-cyan-500 hover:bg-cyan-400 text-black cursor-pointer' 
+                : 'bg-slate-700 hover:bg-slate-650 text-slate-400 cursor-not-allowed border-dashed'
+            } p-4 rounded-xl neo-card flex flex-col justify-between text-left h-36 relative overflow-hidden transition-colors`}
           >
-            <div className="absolute right-2 bottom-2 text-7xl opacity-10">🔒</div>
+            <div className={`absolute right-2 bottom-2 text-7xl opacity-20 ${!clearedIslands.includes('Faith Island') && 'grayscale'}`}>
+              {clearedIslands.includes('Faith Island') ? '🌟' : '🔒'}
+            </div>
             <div className="flex items-center justify-between">
-              <span className="bg-slate-900 text-slate-500 text-xs font-black px-2 py-0.5 rounded-full">LOCKED</span>
+              <span className={`${clearedIslands.includes('Faith Island') ? 'bg-black text-white' : 'bg-slate-900 text-slate-500'} text-xs font-black px-2 py-0.5 rounded-full`}>
+                {clearedIslands.includes('Faith Island') ? 'ACTIVE' : 'LOCKED'}
+              </span>
               <span className="text-xl">🌫️</span>
             </div>
             <div>
-              <h3 className="font-black text-lg leading-tight text-slate-300">Hope Island</h3>
-              <p className="text-xs font-medium mt-1">Requires Faith Island clearance. (Locked in Prototype)</p>
+              <h3 className={`font-black text-lg leading-tight ${clearedIslands.includes('Faith Island') ? 'text-black' : 'text-slate-300'}`}>Hope Island</h3>
+              <p className={`text-xs font-medium mt-1 ${clearedIslands.includes('Faith Island') ? 'text-black/80' : 'text-slate-400'}`}>
+                {clearedIslands.includes('Faith Island') ? 'The mist has cleared! Time to find the next Songbeast.' : 'Requires Faith Island clearance.'}
+              </p>
             </div>
           </button>
 
