@@ -43,7 +43,7 @@ export default function BasecampShop() {
           <div>
             <p className="text-pink-400 font-bold text-xs uppercase">Basecamp Armory & Supplies</p>
             <p className="text-sm italic text-slate-200 mt-1">
-              {"Welcome, Messenger! Trade your earned sweets for survival items. Got some Cucumbers? I&apos;ll buy them too!"}
+              {"Welcome, Messenger! Trade your earned sweets for survival items. Got some Cucumbers? I'll buy them too!"}
             </p>
           </div>
         </div>
@@ -105,7 +105,7 @@ export default function BasecampShop() {
               <span className="text-3xl">🧪</span>
               <div>
                 <h4 className="font-extrabold text-sm text-slate-100">Holy Water Spray</h4>
-                <p className="text-[10px] text-slate-400">Breaches Love Island's Static Barrier.</p>
+                <p className="text-[10px] text-slate-400">{"Breaches Love Island's Static Barrier."}</p>
                 <span className="text-xs font-black text-pink-400">{hasHolyWater ? "OWNED" : "Cost: 5 Cupcakes 🧁"}</span>
               </div>
             </div>

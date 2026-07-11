@@ -64,9 +64,10 @@ export const supabaseService = {
 
       emitGameLog("New profile created and initialized.", "system");
       return newProfile;
-    } catch (err: any) {
-      console.error("Supabase profile fetch exception:", err.message || err);
-      emitGameLog(`Database exception occurred: ${err.message || 'Unknown error'}.`, "system");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error("Supabase profile fetch exception:", message);
+      emitGameLog(`Database exception occurred: ${message}.`, "system");
       throw err;
     }
   },
@@ -83,8 +84,9 @@ export const supabaseService = {
         emitGameLog(`Failed to sync with Supabase: ${error.message}. ${error.details || ''}`, "system");
         throw error;
       }
-    } catch (err: any) {
-      console.error("Supabase profile update exception:", err.message || err);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error("Supabase profile update exception:", message);
       throw err;
     }
   },

@@ -161,6 +161,24 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     emitGameLog("Player session ended. Game state cleared.", "system");
   }, [currentScreen, setCurrentScreen]);
 
+  const loadOfflineFallback = () => {
+    const savedRewards = localStorage.getItem('sts_rewards');
+    if (savedRewards) {
+      try {
+        const { cupcakes: sCup, cucumbers: sCuc, tickets: sTix } = JSON.parse(savedRewards);
+        setCupcakesState(sCup);
+        setCucumbersState(sCuc);
+        setTicketsState(sTix);
+      } catch (e) {
+        console.error("Failed to parse saved rewards", e);
+      }
+    } else {
+      setCupcakesState(5);
+      setCucumbersState(5);
+      setTicketsState(1);
+    }
+  };
+
   // --- SUPABASE DATABASE INTEGRATION ---
   const fetchProfile = React.useCallback(async (id: string) => {
     try {
@@ -184,24 +202,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       loadOfflineFallback();
     }
   }, []);
-
-  const loadOfflineFallback = () => {
-    const savedRewards = localStorage.getItem('sts_rewards');
-    if (savedRewards) {
-      try {
-        const { cupcakes: sCup, cucumbers: sCuc, tickets: sTix } = JSON.parse(savedRewards);
-        setCupcakesState(sCup);
-        setCucumbersState(sCuc);
-        setTicketsState(sTix);
-      } catch (e) {
-        console.error("Failed to parse saved rewards", e);
-      }
-    } else {
-      setCupcakesState(5);
-      setCucumbersState(5);
-      setTicketsState(1);
-    }
-  };
 
   const saveProfile = async (id: string, updatedFields: {
     cupcakes?: number;

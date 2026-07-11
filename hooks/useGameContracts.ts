@@ -6,7 +6,7 @@ import { addLog } from '../utils/gameEvents';
 export function useGameContracts() {
   const { setCupcakes, setHasSwordOfTruth, setHasHolyWater, setTickets } = useGame();
 
-  const rescueSongbeastOnChain = async (beastId: string, decryptionProof: string): Promise<{ success: boolean, txHash?: string, error?: any }> => {
+  const rescueSongbeastOnChain = async (beastId: string, decryptionProof: string): Promise<{ success: boolean, txHash?: string, error?: Error | string }> => {
     addLog(`Initiating rescue process for beast ${beastId}...`, "system");
     
     return new Promise((resolve) => {
@@ -19,7 +19,7 @@ export function useGameContracts() {
     });
   };
 
-  const purchaseItemOnChain = async (itemId: string, costInCupcakes: number): Promise<{ success: boolean, txHash?: string, error?: any }> => {
+  const purchaseItemOnChain = async (itemId: string, costInCupcakes: number): Promise<{ success: boolean, txHash?: string, error?: Error | string }> => {
     addLog(`Processing purchase of ${itemId}...`, "system");
 
     return new Promise((resolve) => {

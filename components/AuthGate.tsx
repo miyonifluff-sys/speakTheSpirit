@@ -5,17 +5,23 @@ import { useGame } from '../context/GameContext';
 import { supabase } from '../services/supabaseService';
 
 export default function AuthGate() {
-  const { shakeTrigger, setFeedback, feedback } = useGame();
+  const { shakeTrigger, setFeedback, feedback, triggerShake } = useGame();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isError, setIsError] = useState(false);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    setFeedback('');
+    setIsError(false);
+    
     if (password.length < 6) {
+      setIsError(true);
       setFeedback("Secret passwords must be at least 6 characters long! 🛡️");
+      triggerShake();
       return;
     }
 
@@ -25,15 +31,20 @@ export default function AuthGate() {
       if (isSignUp) {
         const { error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
+        setIsError(false);
         setFeedback("Account created! Please check your email to confirm. ✨");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
+        setIsError(false);
         setFeedback("Welcome back to the Valley! 🚀");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Auth error:", error);
-      setFeedback(error.message || "Oops! Something went wrong. Try again!");
+      const errorMessage = error instanceof Error ? error.message : "Oops! Something went wrong. Try again!";
+      setIsError(true);
+      setFeedback(errorMessage);
+      triggerShake();
     } finally {
       setLoading(false);
     }
@@ -82,7 +93,11 @@ export default function AuthGate() {
           </div>
 
           {feedback && (
-            <div className="mb-6 p-3 bg-red-500/20 border-2 border-red-500 text-red-200 text-xs font-bold rounded-lg text-center animate-bounce">
+            <div className={`mb-6 p-3 border-2 text-xs font-bold rounded-lg text-center animate-bounce ${
+              isError 
+                ? 'bg-red-500/20 border-red-500 text-red-200' 
+                : 'bg-green-500/20 border-green-500 text-green-200'
+            }`}>
               {feedback}
             </div>
           )}
