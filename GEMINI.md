@@ -1,9 +1,8 @@
-@AGENTS.md
-
-# Agent Guidelines
+# Project Instructions
 
 ## Build Validation
-- Run `npm run build` after every set of changes to verify the project still builds.
+- **Mandatory Build Check:** After making any code changes, you MUST run `npm run build` to ensure that the project compiles successfully and that no regressions were introduced.
+- This should be part of the **Validate** step in the Execution cycle.
 
 ## 🧠 State & Data Management Boundaries
 - Global game values (rewards, cupcakes, cucumbers, tickets, clearedIslands, hasHolyWater) MUST live exclusively inside `context/GameContext.tsx`.
