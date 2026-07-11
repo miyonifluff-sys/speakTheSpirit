@@ -1,13 +1,9 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { addLog as emitGameLog } from '../utils/gameEvents';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+import { supabaseService } from '../services/supabaseService';
 
 export type Screen = 'INTRO' | 'OVERWORLD' | 'QUEST' | 'BATTLE' | 'DEBRIEF' | 'SHOP';
 
@@ -77,11 +73,30 @@ interface GameContextType {
 const GameContext = createContext<GameContextType | undefined>(undefined);
 
 export function GameProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
   // Navigation & Authentication
-  const [currentScreen, setCurrentScreen] = useState<Screen>('INTRO');
+  const [currentScreen, setCurrentScreenState] = useState<Screen>('INTRO');
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [userWallet, setUserWallet] = useState<string | null>(null);
   const [loginMethod, setLoginMethod] = useState<LoginMethod>(null);
+
+  // Sync state with URL on load and on URL change
+  useEffect(() => {
+    const screenParam = searchParams.get('screen');
+    if (screenParam) {
+      const validScreens: Screen[] = ['INTRO', 'OVERWORLD', 'QUEST', 'BATTLE', 'DEBRIEF', 'SHOP'];
+      if (validScreens.includes(screenParam as Screen)) {
+        setCurrentScreenState(screenParam as Screen);
+      }
+    }
+  }, [searchParams]);
+
+  const setCurrentScreen = (screen: Screen) => {
+    setCurrentScreenState(screen);
+    router.push(`?screen=${screen}`, { scroll: false });
+  };
 
   // Gameplay Progress
   const [introStep, setIntroStep] = useState<number>(0);
@@ -92,9 +107,21 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [isSongbeastRehomed, setIsSongbeastRehomed] = useState<boolean>(false);
 
   // Currencies & Inventory
-  const [cupcakes, setCupcakesState] = useState<number>(0);
-  const [cucumbers, setCucumbersState] = useState<number>(0);
-  const [tickets, setTicketsState] = useState<number>(0);
+  const getSavedReward = (key: string) => {
+    if (typeof window === 'undefined') return null;
+    const saved = localStorage.getItem('sts_rewards');
+    if (!saved) return null;
+    try {
+      const parsed = JSON.parse(saved);
+      return parsed[key];
+    } catch {
+      return null;
+    }
+  };
+
+  const [cupcakes, setCupcakesState] = useState<number>(() => getSavedReward('cupcakes') ?? 0);
+  const [cucumbers, setCucumbersState] = useState<number>(() => getSavedReward('cucumbers') ?? 0);
+  const [tickets, setTicketsState] = useState<number>(() => getSavedReward('tickets') ?? 0);
   const [hasSwordOfTruth, setHasSwordOfTruth] = useState<boolean>(false);
   const [hasHolyWater, setHasHolyWater] = useState<boolean>(false);
 
@@ -108,20 +135,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [gameLogs, setGameLogs] = useState<LogEntry[]>([]);
 
   // --- MOCK SMART CONTRACT BRIDGE (LocalStorage) ---
-  useEffect(() => {
-    const savedRewards = localStorage.getItem('sts_rewards');
-    if (savedRewards) {
-      try {
-        const { cupcakes: sCup, cucumbers: sCuc, tickets: sTix } = JSON.parse(savedRewards);
-        setCupcakesState(sCup);
-        setCucumbersState(sCuc);
-        setTicketsState(sTix);
-      } catch (e) {
-        console.error("Failed to parse saved rewards", e);
-      }
-    }
-  }, []);
-
   const persistRewards = (newCupcakes: number, newCucumbers: number, newTickets: number) => {
     localStorage.setItem('sts_rewards', JSON.stringify({
       cupcakes: newCupcakes,
@@ -133,60 +146,21 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   // --- SUPABASE DATABASE INTEGRATION ---
   const fetchProfile = async (wallet: string) => {
     try {
-      emitGameLog("Fetching player profile from Supabase...", "system");
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('wallet', wallet)
-        .maybeSingle();
+      const profile = await supabaseService.fetchProfile(wallet);
 
-      if (error) {
-        console.error("Error fetching profile from Supabase:", error);
-        emitGameLog(`Database error: ${error.message}. Using offline fallback.`, "system");
-        loadOfflineFallback();
-        return;
-      }
-
-      if (data) {
-        setCupcakesState(data.cupcakes ?? 5);
-        setCucumbersState(data.cucumbers ?? 5);
-        setTicketsState(data.tickets ?? 1);
+      if (profile) {
+        setCupcakesState(profile.cupcakes ?? 5);
+        setCucumbersState(profile.cucumbers ?? 5);
+        setTicketsState(profile.tickets ?? 1);
         
-        // Support only clearedIslands
-        const loadedIslands = data.clearedIslands || [];
+        const loadedIslands = profile.clearedIslands || [];
         setClearedIslands(loadedIslands);
         
-        persistRewards(data.cupcakes ?? 5, data.cucumbers ?? 5, data.tickets ?? 1);
-        emitGameLog(`Profile loaded successfully. Cleared islands: ${loadedIslands.length > 0 ? loadedIslands.join(', ') : 'None'}.`, "system");
+        persistRewards(profile.cupcakes ?? 5, profile.cucumbers ?? 5, profile.tickets ?? 1);
       } else {
-        // Create new profile row in Supabase
-        emitGameLog("Creating new player profile on Supabase...", "system");
-        const newProfile = {
-          wallet: wallet,
-          cupcakes: 5,
-          cucumbers: 5,
-          tickets: 1,
-          clearedIslands: [],
-        };
-
-        const { error: insertError } = await supabase
-          .from('profiles')
-          .insert([newProfile]);
-
-        if (insertError) {
-          console.error("Error creating profile in Supabase:", insertError);
-          emitGameLog(`Database error: ${insertError.message}. Using offline fallback.`, "system");
-          loadOfflineFallback();
-        } else {
-          setCupcakesState(5);
-          setCucumbersState(5);
-          setTicketsState(1);
-          setClearedIslands([]);
-          persistRewards(5, 5, 1);
-          emitGameLog("New profile created and initialized.", "system");
-        }
+        loadOfflineFallback();
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Supabase profile fetch exception:", err);
       emitGameLog("Database exception. Using offline fallback.", "system");
       loadOfflineFallback();
@@ -218,23 +192,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     clearedIslands?: string[];
   }) => {
     try {
-      const payload: any = {};
-      if (updatedFields.cupcakes !== undefined) payload.cupcakes = updatedFields.cupcakes;
-      if (updatedFields.cucumbers !== undefined) payload.cucumbers = updatedFields.cucumbers;
-      if (updatedFields.tickets !== undefined) payload.tickets = updatedFields.tickets;
-      if (updatedFields.clearedIslands !== undefined) {
-        payload.clearedIslands = updatedFields.clearedIslands;
-      }
-
-      const { error } = await supabase
-        .from('profiles')
-        .update(payload)
-        .eq('wallet', wallet);
-
-      if (error) {
-        console.error("Error updating profile in Supabase:", error);
-        emitGameLog(`Failed to sync with Supabase: ${error.message}`, "system");
-      }
+      await supabaseService.saveProfile(wallet, updatedFields);
     } catch (err) {
       console.error("Supabase profile update exception:", err);
     }
@@ -244,10 +202,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const setCupcakes = (val: number | ((prev: number) => number)) => {
     setCupcakesState((prev) => {
       const next = typeof val === 'function' ? val(prev) : val;
-      persistRewards(next, cucumbers, tickets);
-      if (userWallet) {
-        saveProfile(userWallet, { cupcakes: next });
-      }
+      queueMicrotask(() => {
+        persistRewards(next, cucumbers, tickets);
+        if (userWallet) {
+          saveProfile(userWallet, { cupcakes: next });
+        }
+      });
       return next;
     });
   };
@@ -255,10 +215,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const setCucumbers = (val: number | ((prev: number) => number)) => {
     setCucumbersState((prev) => {
       const next = typeof val === 'function' ? val(prev) : val;
-      persistRewards(cupcakes, next, tickets);
-      if (userWallet) {
-        saveProfile(userWallet, { cucumbers: next });
-      }
+      queueMicrotask(() => {
+        persistRewards(cupcakes, next, tickets);
+        if (userWallet) {
+          saveProfile(userWallet, { cucumbers: next });
+        }
+      });
       return next;
     });
   };
@@ -266,10 +228,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const setTickets = (val: number | ((prev: number) => number)) => {
     setTicketsState((prev) => {
       const next = typeof val === 'function' ? val(prev) : val;
-      persistRewards(cupcakes, cucumbers, next);
-      if (userWallet) {
-        saveProfile(userWallet, { tickets: next });
-      }
+      queueMicrotask(() => {
+        persistRewards(cupcakes, cucumbers, next);
+        if (userWallet) {
+          saveProfile(userWallet, { tickets: next });
+        }
+      });
       return next;
     });
   };
@@ -279,9 +243,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setClearedIslands((prev) => {
       if (prev.includes(islandName)) return prev;
       const next = [...prev, islandName];
-      if (userWallet) {
-        saveProfile(userWallet, { clearedIslands: next });
-      }
+      queueMicrotask(() => {
+        if (userWallet) {
+          saveProfile(userWallet, { clearedIslands: next });
+        }
+      });
       return next;
     });
     emitGameLog(`Cleared island progression updated: ${islandName}!`, "system");
