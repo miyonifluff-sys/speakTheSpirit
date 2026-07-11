@@ -64,6 +64,8 @@ interface GameContextType {
   setFeedback: (fb: string) => void;
   shakeTrigger: boolean;
   setShakeTrigger: (val: boolean) => void;
+  isTransactionPending: boolean;
+  setIsTransactionPending: (pending: boolean) => void;
   gameLogs: LogEntry[];
   setGameLogs: React.Dispatch<React.SetStateAction<LogEntry[]>>;
 
@@ -102,6 +104,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   // Visual / Feedback State
   const [feedback, setFeedback] = useState<string>('');
   const [shakeTrigger, setShakeTrigger] = useState<boolean>(false);
+  const [isTransactionPending, setIsTransactionPending] = useState<boolean>(false);
   const [gameLogs, setGameLogs] = useState<LogEntry[]>([]);
 
   // --- MOCK SMART CONTRACT BRIDGE (LocalStorage) ---
@@ -389,6 +392,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         setFeedback,
         shakeTrigger,
         setShakeTrigger,
+        isTransactionPending,
+        setIsTransactionPending,
         gameLogs,
         setGameLogs,
 

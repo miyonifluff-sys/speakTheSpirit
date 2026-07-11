@@ -1,9 +1,10 @@
 'use client';
 
 import { useGame } from '../context/GameContext';
+import { addLog } from '../utils/gameEvents';
 
 export function useGameContracts() {
-  const { userWallet, addLog, setCupcakes, setHasSwordOfTruth, setHasHolyWater } = useGame();
+  const { userWallet, setCupcakes, setHasSwordOfTruth, setHasHolyWater } = useGame();
 
   const rescueSongbeastOnChain = async (beastId: string, decryptionProof: string) => {
     addLog(`Initiating blockchain transaction for beast ${beastId}...`, "system");

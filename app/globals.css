@@ -19,8 +19,60 @@
   }
 }
 
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Neobrutalist Animations */
+@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+@keyframes shake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
+@keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes radial-pulse { 0%, 100% { transform: scale(1); opacity: 0.2; } 50% { transform: scale(1.15); opacity: 0.35; } }
+
+.animate-float { animation: float 3s ease-in-out infinite; }
+.animate-shake-box { animation: shake 0.4s ease-in-out; }
+.animate-spin-slow { animation: spin-slow 15s linear infinite; }
+.animate-radial-pulse { animation: radial-pulse 4s ease-in-out infinite; }
+
+/* Neobrutalist Utility Classes */
+.neo-box { 
+  border: 4px solid #000; 
+  box-shadow: 8px 8px 0px 0px #000; 
+}
+
+.neo-card { 
+  border: 4px solid #000; 
+  box-shadow: 6px 6px 0px 0px #000; 
+  transition: all 0.15s ease-out; 
+}
+
+.neo-btn { 
+  border: 3px solid #000; 
+  box-shadow: 4px 4px 0px 0px #000; 
+  transition: all 0.1s ease-out; 
+}
+.neo-btn:hover { transform: translate(-1px, -1px); box-shadow: 5px 5px 0px 0px #000; }
+.neo-btn:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0px 0px #000; }
