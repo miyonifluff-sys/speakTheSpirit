@@ -4,6 +4,7 @@ import React from 'react';
 import { useGame } from '../context/GameContext';
 import { addLog } from '../utils/gameEvents';
 import { useGameContracts } from '../hooks/useGameContracts';
+import { SHOP_ITEMS, ShopItem } from '../config/shopConfig';
 
 export default function BasecampShop() {
   const { 
@@ -11,8 +12,6 @@ export default function BasecampShop() {
     setCupcakes,
     cucumbers, 
     setCucumbers, 
-    tickets, 
-    setTickets, 
     hasSwordOfTruth, 
     hasHolyWater, 
     setCurrentScreen, 
@@ -21,6 +20,36 @@ export default function BasecampShop() {
   } = useGame();
 
   const { purchaseItemOnChain } = useGameContracts();
+
+  const executePurchase = async (item: ShopItem) => {
+    if (cupcakes >= item.cost) {
+      setCupcakes(cupcakes - item.cost);
+      await purchaseItemOnChain(item.id, item.cost);
+      setFeedback(`Successfully purchased ${item.name}!`);
+    } else {
+      triggerShake();
+      setFeedback(`Insufficient Cupcakes for ${item.name}! Go clear Faith Island or sell Cucumbers!`);
+    }
+  };
+
+  const executeTrade = () => {
+    if (cucumbers >= 1) {
+      setCucumbers(cucumbers - 1);
+      setCupcakes(cupcakes + 2);
+      addLog("Sold 1 Cucumber for +2 Cupcakes at the Trading Post.", "shop");
+      setFeedback("Traded 1 Cucumber for 2 Cupcakes!");
+    } else {
+      triggerShake();
+      setFeedback("No Cucumbers in stock to trade!");
+    }
+  };
+
+  const isItemOwned = (item: ShopItem) => {
+    if (!item.stateKey) return false;
+    if (item.stateKey === 'hasSwordOfTruth') return hasSwordOfTruth;
+    if (item.stateKey === 'hasHolyWater') return hasHolyWater;
+    return false;
+  };
 
   return (
     <div className="flex-1 flex flex-col justify-between">
@@ -49,82 +78,34 @@ export default function BasecampShop() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-slate-900 p-4 border-3 border-black rounded-xl flex items-center justify-between shadow-[2px_2px_0px_#000]">
-            <div className="flex items-center gap-3">
-              <span className="text-3xl">🎟️</span>
-              <div>
-                <h4 className="font-extrabold text-sm text-slate-100">Basecamp Ticket</h4>
-                <p className="text-[10px] text-slate-400">Needed to rescue freed Songbeasts.</p>
-                <span className="text-xs font-black text-pink-400">Cost: 3 Cupcakes 🧁</span>
+          {SHOP_ITEMS.map((item) => {
+            const owned = isItemOwned(item);
+            return (
+              <div key={item.id} className="bg-slate-900 p-4 border-3 border-black rounded-xl flex items-center justify-between shadow-[2px_2px_0px_#000]">
+                <div className="flex items-center gap-3">
+                  <span className="text-3xl">{item.icon}</span>
+                  <div>
+                    <h4 className="font-extrabold text-sm text-slate-100">{item.name}</h4>
+                    <p className="text-[10px] text-slate-400">{item.description}</p>
+                    <span className="text-xs font-black text-pink-400">
+                      {owned ? "OWNED" : `Cost: ${item.cost} ${item.costLabel}`}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  disabled={owned}
+                  onClick={() => executePurchase(item)}
+                  className={`font-black text-xs px-3 py-2 rounded border-2 border-black ${
+                    owned 
+                      ? 'bg-slate-700 text-slate-500 cursor-not-allowed border-slate-800' 
+                      : 'bg-yellow-400 hover:bg-yellow-300 text-black neo-btn'
+                  }`}
+                >
+                  Buy {item.icon}
+                </button>
               </div>
-            </div>
-            <button
-              onClick={async () => {
-                if (cupcakes >= 3) {
-                  setCupcakes(cupcakes - 3);
-                  await purchaseItemOnChain('TICKET', 3);
-                } else {
-                  triggerShake();
-                  setFeedback("Insufficient Cupcakes! Go clear Faith Island or sell Cucumbers!");
-                }
-              }}
-              className="bg-yellow-400 hover:bg-yellow-300 text-black font-black text-xs px-3 py-2 rounded border-2 border-black neo-btn"
-            >
-              Buy 🎟️
-            </button>
-          </div>
-
-          <div className="bg-slate-900 p-4 border-3 border-black rounded-xl flex items-center justify-between shadow-[2px_2px_0px_#000]">
-            <div className="flex items-center gap-3">
-              <span className="text-3xl">⚔️</span>
-              <div>
-                <h4 className="font-extrabold text-sm text-slate-100">Sword of Truth</h4>
-                <p className="text-[10px] text-slate-400">Shatters Silencer barriers instantly.</p>
-                <span className="text-xs font-black text-pink-400">{hasSwordOfTruth ? "OWNED" : "Cost: 8 Cupcakes 🧁"}</span>
-              </div>
-            </div>
-            <button
-              disabled={hasSwordOfTruth}
-              onClick={async () => {
-                if (cupcakes >= 8) {
-                  setCupcakes(cupcakes - 8);
-                  await purchaseItemOnChain('SWORD', 8);
-                } else {
-                  triggerShake();
-                  setFeedback("Insufficient Cupcakes for the Sword of Truth!");
-                }
-              }}
-              className={`font-black text-xs px-3 py-2 rounded border-2 border-black ${hasSwordOfTruth ? 'bg-slate-700 text-slate-500 cursor-not-allowed border-slate-800' : 'bg-yellow-400 hover:bg-yellow-300 text-black neo-btn'}`}
-            >
-              Buy ⚔️
-            </button>
-          </div>
-
-          <div className="bg-slate-900 p-4 border-3 border-black rounded-xl flex items-center justify-between shadow-[2px_2px_0px_#000]">
-            <div className="flex items-center gap-3">
-              <span className="text-3xl">🧪</span>
-              <div>
-                <h4 className="font-extrabold text-sm text-slate-100">Holy Water Spray</h4>
-                <p className="text-[10px] text-slate-400">{"Breaches Love Island's Static Barrier."}</p>
-                <span className="text-xs font-black text-pink-400">{hasHolyWater ? "OWNED" : "Cost: 5 Cupcakes 🧁"}</span>
-              </div>
-            </div>
-            <button
-              disabled={hasHolyWater}
-              onClick={async () => {
-                if (cupcakes >= 5) {
-                  setCupcakes(cupcakes - 5);
-                  await purchaseItemOnChain('WATER', 5);
-                } else {
-                  triggerShake();
-                  setFeedback("Insufficient Cupcakes for Holy Water Spray!");
-                }
-              }}
-              className={`font-black text-xs px-3 py-2 rounded border-2 border-black ${hasHolyWater ? 'bg-slate-700 text-slate-500 cursor-not-allowed border-slate-800' : 'bg-yellow-400 hover:bg-yellow-300 text-black neo-btn'}`}
-            >
-              Buy 🧪
-            </button>
-          </div>
+            );
+          })}
 
           <div className="bg-slate-950 p-4 border-3 border-dashed border-pink-400 rounded-xl flex items-center justify-between">
             <div>
@@ -133,16 +114,7 @@ export default function BasecampShop() {
               <span className="text-[10px] font-bold text-slate-500">Inventory: {cucumbers} Cucumbers</span>
             </div>
             <button
-              onClick={() => {
-                if (cucumbers >= 1) {
-                  setCucumbers(cucumbers - 1);
-                  setCupcakes(cupcakes + 2);
-                  addLog("Sold 1 Cucumber for +2 Cupcakes at the Trading Post.", "shop");
-                } else {
-                  triggerShake();
-                  setFeedback("No Cucumbers in stock to trade!");
-                }
-              }}
+              onClick={executeTrade}
               className="bg-green-500 hover:bg-green-400 text-white font-extrabold text-xs px-3 py-2 rounded border-2 border-black neo-btn"
             >
               Sell 🥒
