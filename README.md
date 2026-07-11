@@ -1,9 +1,45 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Speak the Spirit 🕊️
+### Natively Integrating Scripture into Emerging Frontiers
 
-## Getting Started
+[Insert a 2-3 sentence description here. Explain what problem you are solving and how your application changes what's possible for someone encountering Scripture in a space they already love.]
 
-First, run the development server:
+---
 
+## 🚀 Features & Core Capabilities
+* **Native Scripture Ingestion:** Powered by the YouVersion Platform API to surface contextually relevant textual payloads seamlessly.
+* **Values-Aligned Enrichment:** Integrates Gloo AI Studio endpoints to generate semantic text transformations and relational workflows.
+* **Modern Web Framework:** Engineered on Next.js 14+ for lightning-fast, production-ready backend routing and client rendering.
+
+---
+
+## ⚙️ Local Setup & Installation
+
+Follow these steps to run the application locally on your machine for testing or review:
+
+### 1. Clone the Repository
+```bash
+git clone [https://github.com/miyonifluff-sys/speakTheSpirit.git](https://github.com/miyonifluff-sys/speakTheSpirit.git)
+cd speakTheSpirit
+```
+
+### 2. Install Dependencies  
+```bash
+npm install
+```
+
+### 3. Configure Environment Variables
+Create a file named .env in the root directory of your project. Copy the template below and replace the placeholder values with your authorized developer API credentials:
+```bash
+# YouVersion API Platform Configuration
+YOUVERSION_API_KEY=your_actual_youversion_app_key_here
+
+# Gloo AI Studio OAuth2 Credentials
+GLOO_CLIENT_ID=your_actual_gloo_client_id_here
+GLOO_CLIENT_SECRET=your_actual_gloo_client_secret_here
+```
+Note: Your local .env file is automatically ignored by Git configurations to ensure credential safety.
+
+### 4. Run the deployment server
 ```bash
 npm run dev
 # or
@@ -13,21 +49,7 @@ pnpm dev
 # or
 bun dev
 ```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Open http://localhost:3000 in your web browser to interact with the application demo.
 
 ## Deploy on Vercel
 
