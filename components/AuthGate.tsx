@@ -5,12 +5,21 @@ import { useGame } from '../context/GameContext';
 import { supabase } from '../services/supabaseService';
 
 export default function AuthGate() {
-  const { shakeTrigger, setFeedback, feedback, triggerShake } = useGame();
+  const { shakeTrigger, triggerShake } = useGame();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isError, setIsError] = useState(false);
+  const [feedback, setFeedback] = useState('');
+
+  const processAuthError = (error: unknown) => {
+    console.info("Auth info:", error);
+    const errorMessage = error instanceof Error ? error.message : "Oops! Something went wrong. Try again!";
+    setIsError(true);
+    setFeedback(errorMessage);
+    triggerShake();
+  };
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,21 +39,23 @@ export default function AuthGate() {
     try {
       if (isSignUp) {
         const { error } = await supabase.auth.signUp({ email, password });
-        if (error) throw error;
-        setIsError(false);
-        setFeedback("Account created! Please check your email to confirm. ✨");
+        if (error) {
+          processAuthError(error);
+        } else {
+          setIsError(false);
+          setFeedback("Account created! Please check your email to confirm. ✨");
+        }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        setIsError(false);
-        setFeedback("Welcome back to the Valley! 🚀");
+        if (error) {
+          processAuthError(error);
+        } else {
+          setIsError(false);
+          setFeedback("Welcome back to the Valley! 🚀");
+        }
       }
     } catch (error: unknown) {
-      console.error("Auth error:", error);
-      const errorMessage = error instanceof Error ? error.message : "Oops! Something went wrong. Try again!";
-      setIsError(true);
-      setFeedback(errorMessage);
-      triggerShake();
+      processAuthError(error);
     } finally {
       setLoading(false);
     }
