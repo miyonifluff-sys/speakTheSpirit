@@ -22,7 +22,7 @@ interface GameContextType {
   isLoggedIn: boolean;
   userWallet: string | null;
   loginMethod: LoginMethod;
-  handleLogin: () => void;
+  handleLogin: (wallet?: string) => void;
   handleLogout: () => void;
 
   // Game Logic State
@@ -262,14 +262,14 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   // Mock Authentication Functions
 
   // Mock Authentication Functions
-  const handleLogin = async () => {
+  const handleLogin = async (wallet?: string) => {
+    const finalWallet = wallet || "0xMOCK_USER";
     setIsLoggedIn(true);
     setLoginMethod('MOCK');
-    const wallet = "0xMOCK_USER_VALIDATED";
-    setUserWallet(wallet);
+    setUserWallet(finalWallet);
     
     // Fetch profile from Supabase
-    await fetchProfile(wallet);
+    await fetchProfile(finalWallet);
     setFeedback("Authentication successful! Welcome to the Valley.");
   };
 

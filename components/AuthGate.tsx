@@ -4,7 +4,7 @@ import React from 'react';
 import { useGame } from '../context/GameContext';
 
 export default function AuthGate() {
-  const { handleLogin, triggerShake, shakeTrigger } = useGame();
+  const { handleLogin, shakeTrigger } = useGame();
 
   return (
     <div className={`w-full max-w-md mx-auto my-12 p-8 bg-slate-800 border-4 border-black rounded-2xl shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] ${shakeTrigger ? 'animate-shake-box' : ''}`}>
@@ -21,20 +21,20 @@ export default function AuthGate() {
             <h3 className="font-extrabold text-sm text-cyan-400 uppercase tracking-wide">Unified Authentication</h3>
           </div>
           <p className="text-xs text-slate-300 leading-relaxed mb-6">
-            Sign in with your Google, Web3 Wallet, or Social account. We'll automatically bridge your rewards and items.
+            Sign in to bridge your rewards and items.
           </p>
 
           <button
-            onClick={handleLogin}
+            onClick={() => handleLogin("0xMOCK_USER")}
             className="w-full bg-gradient-to-r from-indigo-600 via-pink-500 to-yellow-500 hover:brightness-110 text-white font-black text-sm uppercase py-4 rounded-lg border-2 border-black neo-btn transition-all"
           >
-            🚀 Sign in with Google / Web3 Account
+            🚀 Sign in and enter Valley
           </button>
         </div>
       </div>
 
       <div className="mt-8 text-[10px] text-center text-slate-500 font-bold leading-normal">
-        🔐 Unified Mock Auth enabled. Rewards are persisted via LocalStorage bridge.
+        🔐 Unified Auth enabled. Rewards are persisted via Supabase.
       </div>
     </div>
   );
