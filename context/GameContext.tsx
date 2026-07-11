@@ -13,7 +13,7 @@ export interface LogEntry {
   timestamp: string;
 }
 
-export type LoginMethod = 'SUPABASE' | 'MOCK' | null;
+export type LoginMethod = 'SUPABASE' | null;
 
 interface GameContextType {
   // Navigation / Auth State
@@ -22,7 +22,6 @@ interface GameContextType {
   isLoggedIn: boolean;
   userId: string | null;
   loginMethod: LoginMethod;
-  handleLogin: (wallet?: string) => void;
   handleLogout: () => void;
 
   // Game Logic State
@@ -308,17 +307,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Authentication Functions
-  const handleLogin = async (wallet?: string) => {
-    // Keep mock login as a backup or for testing if needed, but prioritize Supabase
-    const finalId = wallet || "0xMOCK_USER";
-    setIsLoggedIn(true);
-    setLoginMethod('MOCK');
-    setUserId(finalId);
-    
-    await fetchProfile(finalId);
-    setFeedback("Authentication successful! Welcome to the Valley.");
-  };
-
   const handleLogout = async () => {
     try {
       await supabase.auth.signOut();
@@ -372,7 +360,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         isLoggedIn,
         userId,
         loginMethod,
-        handleLogin,
         handleLogout,
 
         introStep,
