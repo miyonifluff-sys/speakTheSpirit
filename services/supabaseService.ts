@@ -7,7 +7,7 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export interface PlayerProfile {
-  wallet: string;
+  id: string;
   cupcakes: number;
   cucumbers: number;
   tickets: number;
@@ -22,18 +22,18 @@ export interface ProfileUpdate {
 }
 
 export const supabaseService = {
-  async fetchProfile(wallet: string): Promise<PlayerProfile | null> {
+  async fetchProfile(userId: string): Promise<PlayerProfile | null> {
     try {
       emitGameLog("Fetching player profile from Supabase...", "system");
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('wallet', wallet)
+        .eq('id', userId)
         .maybeSingle();
 
       if (error) {
-        console.error("Error fetching profile from Supabase:", error);
-        emitGameLog(`Database error: ${error.message}.`, "system");
+        console.error("Error fetching profile from Supabase:", error.message, error.details);
+        emitGameLog(`Database error: ${error.message}. ${error.details || ''}`, "system");
         throw error;
       }
 
@@ -45,7 +45,7 @@ export const supabaseService = {
       // Create new profile row in Supabase if not found
       emitGameLog("Creating new player profile on Supabase...", "system");
       const newProfile: PlayerProfile = {
-        wallet: wallet,
+        id: userId,
         cupcakes: 5,
         cucumbers: 5,
         tickets: 1,
@@ -57,34 +57,34 @@ export const supabaseService = {
         .insert([newProfile]);
 
       if (insertError) {
-        console.error("Error creating profile in Supabase:", insertError);
-        emitGameLog(`Database error: ${insertError.message}.`, "system");
+        console.error("Error creating profile in Supabase:", insertError.message, insertError.details);
+        emitGameLog(`Database error: ${insertError.message}. ${insertError.details || ''}`, "system");
         throw insertError;
       }
 
       emitGameLog("New profile created and initialized.", "system");
       return newProfile;
-    } catch (err: unknown) {
-      console.error("Supabase profile fetch exception:", err);
-      emitGameLog("Database exception occurred.", "system");
+    } catch (err: any) {
+      console.error("Supabase profile fetch exception:", err.message || err);
+      emitGameLog(`Database exception occurred: ${err.message || 'Unknown error'}.`, "system");
       throw err;
     }
   },
 
-  async saveProfile(wallet: string, updatedFields: ProfileUpdate): Promise<void> {
+  async saveProfile(userId: string, updatedFields: ProfileUpdate): Promise<void> {
     try {
       const { error } = await supabase
         .from('profiles')
         .update(updatedFields)
-        .eq('wallet', wallet);
+        .eq('id', userId);
 
       if (error) {
-        console.error("Error updating profile in Supabase:", error);
-        emitGameLog(`Failed to sync with Supabase: ${error.message}`, "system");
+        console.error("Error updating profile in Supabase:", error.message, error.details);
+        emitGameLog(`Failed to sync with Supabase: ${error.message}. ${error.details || ''}`, "system");
         throw error;
       }
-    } catch (err: unknown) {
-      console.error("Supabase profile update exception:", err);
+    } catch (err: any) {
+      console.error("Supabase profile update exception:", err.message || err);
       throw err;
     }
   },

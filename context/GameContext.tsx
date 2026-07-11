@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { addLog as emitGameLog } from '../utils/gameEvents';
-import { supabaseService } from '../services/supabaseService';
+import { supabase, supabaseService } from '../services/supabaseService';
 
 export type Screen = 'INTRO' | 'OVERWORLD' | 'QUEST' | 'BATTLE' | 'DEBRIEF' | 'SHOP';
 
@@ -13,14 +13,14 @@ export interface LogEntry {
   timestamp: string;
 }
 
-export type LoginMethod = 'MOCK' | null;
+export type LoginMethod = 'SUPABASE' | 'MOCK' | null;
 
 interface GameContextType {
   // Navigation / Auth State
   currentScreen: Screen;
   setCurrentScreen: (screen: Screen) => void;
   isLoggedIn: boolean;
-  userWallet: string | null;
+  userId: string | null;
   loginMethod: LoginMethod;
   handleLogin: (wallet?: string) => void;
   handleLogout: () => void;
@@ -79,24 +79,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   // Navigation & Authentication
   const [currentScreen, setCurrentScreenState] = useState<Screen>('INTRO');
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
-  const [userWallet, setUserWallet] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const [loginMethod, setLoginMethod] = useState<LoginMethod>(null);
-
-  // Sync state with URL on load and on URL change
-  useEffect(() => {
-    const screenParam = searchParams.get('screen');
-    if (screenParam) {
-      const validScreens: Screen[] = ['INTRO', 'OVERWORLD', 'QUEST', 'BATTLE', 'DEBRIEF', 'SHOP'];
-      if (validScreens.includes(screenParam as Screen)) {
-        setCurrentScreenState(screenParam as Screen);
-      }
-    }
-  }, [searchParams]);
-
-  const setCurrentScreen = (screen: Screen) => {
-    setCurrentScreenState(screen);
-    router.push(`?screen=${screen}`, { scroll: false });
-  };
 
   // Gameplay Progress
   const [introStep, setIntroStep] = useState<number>(0);
@@ -134,6 +118,13 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [isTransactionPending, setIsTransactionPending] = useState<boolean>(false);
   const [gameLogs, setGameLogs] = useState<LogEntry[]>([]);
 
+  const setCurrentScreen = React.useCallback((screen: Screen) => {
+    setCurrentScreenState(screen);
+    router.push(`?screen=${screen}`, { scroll: false });
+  }, [router]);
+
+  // ... inside GameProvider ...
+
   // --- MOCK SMART CONTRACT BRIDGE (LocalStorage) ---
   const persistRewards = (newCupcakes: number, newCucumbers: number, newTickets: number) => {
     localStorage.setItem('sts_rewards', JSON.stringify({
@@ -143,10 +134,38 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     }));
   };
 
+  // Internal helper to reset state without triggering another signOut
+  const cleanupAuthAndState = React.useCallback(() => {
+    setIsLoggedIn(false);
+    setUserId(null);
+    setLoginMethod(null);
+    
+    if (currentScreen !== 'INTRO') {
+      setCurrentScreen('INTRO');
+    }
+
+    // Fully clear out game state
+    setIntroStep(0);
+    setQuestObjectClicked(false);
+    setBattleStep(0);
+    setBattleShieldHp(100);
+    setPortalActive(false);
+    setIsSongbeastRehomed(false);
+    setCupcakesState(0);
+    setCucumbersState(0);
+    setTicketsState(0);
+    setClearedIslands([]);
+    setHasSwordOfTruth(false);
+    setHasHolyWater(false);
+    setFeedback('');
+
+    emitGameLog("Player session ended. Game state cleared.", "system");
+  }, [currentScreen, setCurrentScreen]);
+
   // --- SUPABASE DATABASE INTEGRATION ---
-  const fetchProfile = async (wallet: string) => {
+  const fetchProfile = React.useCallback(async (id: string) => {
     try {
-      const profile = await supabaseService.fetchProfile(wallet);
+      const profile = await supabaseService.fetchProfile(id);
 
       if (profile) {
         setCupcakesState(profile.cupcakes ?? 5);
@@ -165,7 +184,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       emitGameLog("Database exception. Using offline fallback.", "system");
       loadOfflineFallback();
     }
-  };
+  }, []);
 
   const loadOfflineFallback = () => {
     const savedRewards = localStorage.getItem('sts_rewards');
@@ -185,18 +204,47 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const saveProfile = async (wallet: string, updatedFields: {
+  const saveProfile = async (id: string, updatedFields: {
     cupcakes?: number;
     cucumbers?: number;
     tickets?: number;
     clearedIslands?: string[];
   }) => {
     try {
-      await supabaseService.saveProfile(wallet, updatedFields);
+      await supabaseService.saveProfile(id, updatedFields);
     } catch (err) {
       console.error("Supabase profile update exception:", err);
     }
   };
+
+  // Supabase Auth Listener
+  useEffect(() => {
+    // Check current session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setIsLoggedIn(true);
+        setUserId(session.user.id);
+        setLoginMethod('SUPABASE');
+        fetchProfile(session.user.id);
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        setIsLoggedIn(true);
+        setUserId(session.user.id);
+        setLoginMethod('SUPABASE');
+        fetchProfile(session.user.id);
+      } else {
+        cleanupAuthAndState();
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [fetchProfile, cleanupAuthAndState]);
+
 
   // Wrappers for currency updates to ensure persistence
   const setCupcakes = (val: number | ((prev: number) => number)) => {
@@ -204,8 +252,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       const next = typeof val === 'function' ? val(prev) : val;
       queueMicrotask(() => {
         persistRewards(next, cucumbers, tickets);
-        if (userWallet) {
-          saveProfile(userWallet, { cupcakes: next });
+        if (userId) {
+          saveProfile(userId, { cupcakes: next });
         }
       });
       return next;
@@ -217,8 +265,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       const next = typeof val === 'function' ? val(prev) : val;
       queueMicrotask(() => {
         persistRewards(cupcakes, next, tickets);
-        if (userWallet) {
-          saveProfile(userWallet, { cucumbers: next });
+        if (userId) {
+          saveProfile(userId, { cucumbers: next });
         }
       });
       return next;
@@ -230,8 +278,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       const next = typeof val === 'function' ? val(prev) : val;
       queueMicrotask(() => {
         persistRewards(cupcakes, cucumbers, next);
-        if (userWallet) {
-          saveProfile(userWallet, { tickets: next });
+        if (userId) {
+          saveProfile(userId, { tickets: next });
         }
       });
       return next;
@@ -244,8 +292,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       if (prev.includes(islandName)) return prev;
       const next = [...prev, islandName];
       queueMicrotask(() => {
-        if (userWallet) {
-          saveProfile(userWallet, { clearedIslands: next });
+        if (userId) {
+          saveProfile(userId, { clearedIslands: next });
         }
       });
       return next;
@@ -259,26 +307,26 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setTimeout(() => setShakeTrigger(false), 500);
   };
 
-  // Mock Authentication Functions
-
-  // Mock Authentication Functions
+  // Authentication Functions
   const handleLogin = async (wallet?: string) => {
-    const finalWallet = wallet || "0xMOCK_USER";
+    // Keep mock login as a backup or for testing if needed, but prioritize Supabase
+    const finalId = wallet || "0xMOCK_USER";
     setIsLoggedIn(true);
     setLoginMethod('MOCK');
-    setUserWallet(finalWallet);
+    setUserId(finalId);
     
-    // Fetch profile from Supabase
-    await fetchProfile(finalWallet);
+    await fetchProfile(finalId);
     setFeedback("Authentication successful! Welcome to the Valley.");
   };
 
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    setUserWallet(null);
-    setLoginMethod(null);
-    setCurrentScreen('INTRO');
-    emitGameLog("Player logged out. Connection closed.", "system");
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      // cleanupAuthAndState is called automatically via onAuthStateChange
+    } catch (err) {
+      console.error("Error during sign out:", err);
+      cleanupAuthAndState();
+    }
   };
 
   // Reset Progression State
@@ -304,8 +352,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setFeedback('');
     emitGameLog("Game values reset to start. Starting over...", "system");
 
-    if (userWallet) {
-      await saveProfile(userWallet, {
+    if (userId) {
+      await saveProfile(userId, {
         cupcakes: resetCupcakes,
         cucumbers: resetCucumbers,
         tickets: resetTickets,
@@ -322,7 +370,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         currentScreen,
         setCurrentScreen,
         isLoggedIn,
-        userWallet,
+        userId,
         loginMethod,
         handleLogin,
         handleLogout,
