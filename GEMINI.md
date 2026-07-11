@@ -1,8 +1,10 @@
 # Project Instructions
 
-## Build Validation
-- **Mandatory Build Check:** After making any code changes, you MUST run `npm run build` to ensure that the project compiles successfully and that no regressions were introduced.
-- This should be part of the **Validate** step in the Execution cycle.
+## 🛠️ Build & Quality Validation
+- **Mandatory Validation Check:** After making any code changes, you MUST run both `npm run lint` and `npm run build` to ensure the project is stable and compliant.
+- **`npm run lint`**: Must be run first to catch syntax errors, unused variables, formatting bugs, and React hook dependency array mismatches. Strict lint compliance is required for deployment.
+- **`npm run build`**: Must be run to ensure the project compiles successfully and no regressions were introduced.
+- These checks MUST be performed as part of the **Validate** step in the Execution cycle. A task is not complete until both pass.
 
 ## 🧠 State & Data Management Boundaries
 - Global game values (rewards, cupcakes, cucumbers, tickets, clearedIslands, hasHolyWater) MUST live exclusively inside `context/GameContext.tsx`.
@@ -29,7 +31,3 @@ To maintain code stability and prevent context clutter, strictly separate data l
 2. 🎨 UI & Presentation Layer (Rendering):
    - Standalone components (e.g., `BattleArea.tsx`, `BasecampShop.tsx`) should act as "pure" layout containers.
    - They must pull ready-to-use data values and callback triggers from `useGameContext()` and focus strictly on mapping that data to the screen using Tailwind and global classes.
-
-### 🧹 Code Quality: npm run lint
-- **What it does:** Runs static analysis over our TypeScript and Next.js components to catch syntax errors, unused variables, formatting bugs, and React hook dependency array mismatches before deployment.
-- **Hackathon Status:** Active. Build pipelines require strict lint compliance to prevent deployment failures on Vercel/Netlify.
