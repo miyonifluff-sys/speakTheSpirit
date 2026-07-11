@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { addLog as emitGameLog } from '../utils/gameEvents';
 import { supabase, supabaseService } from '../services/supabaseService';
+import { BATTLE_ROUNDS } from '../utils/battleData';
 
 export type Screen = 'INTRO' | 'OVERWORLD' | 'QUEST' | 'BATTLE' | 'DEBRIEF' | 'SHOP';
 
@@ -67,6 +68,9 @@ interface GameContextType {
   // Actions
   triggerShake: () => void;
   handleResetGame: () => void;
+  handleBattleAnswer: (answer: string) => void;
+  handleUseSwordOfTruth: () => void;
+  handleTriggerPortal: () => void;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -121,8 +125,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setCurrentScreenState(screen);
     router.push(`?screen=${screen}`, { scroll: false });
   }, [router]);
-
-  // ... inside GameProvider ...
 
   // --- MOCK SMART CONTRACT BRIDGE (LocalStorage) ---
   const persistRewards = (newCupcakes: number, newCucumbers: number, newTickets: number) => {
@@ -306,6 +308,46 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setTimeout(() => setShakeTrigger(false), 500);
   };
 
+  // --- BATTLE LOGIC ---
+  const handleBattleAnswer = (answer: string) => {
+    const currentRound = BATTLE_ROUNDS[battleStep];
+    if (answer === currentRound.correct) {
+      emitGameLog(`Correct! Selected "${answer}". The Silencer's shield takes damage!`, "battle");
+      const nextHp = Math.max(0, battleShieldHp - 33);
+      setBattleShieldHp(nextHp);
+      if (battleStep < BATTLE_ROUNDS.length - 1) {
+        setBattleStep(battleStep + 1);
+        setFeedback("Holy frequencies matching! Keep decoding!");
+      } else {
+        setBattleShieldHp(0);
+        setFeedback("Shield fully neutralized! The Songbeast is ready to be restored!");
+        emitGameLog("The Silencer's noise shield is down! Trigger the restoration portal!", "system");
+      }
+    } else {
+      triggerShake();
+      setFeedback("Static interference! That word didn't match the vibration of Truth.");
+      emitGameLog(`Incorrect answer "${answer}". The Silencer's shield deflected the strike.`, "battle");
+    }
+  };
+
+  const handleUseSwordOfTruth = () => {
+    if (!hasSwordOfTruth) return;
+    emitGameLog("You raise the Sword of Truth! Pure radiant light pierces the static barrier!", "battle");
+    setBattleShieldHp(0);
+    setBattleStep(BATTLE_ROUNDS.length - 1);
+    setFeedback("The Sword of Truth instantly shattered the Silencer's barrier!");
+  };
+
+  const handleTriggerPortal = () => {
+    setPortalActive(true);
+    emitGameLog("Activating Born Again Portal... Restoring frequencies!", "system");
+    setTimeout(() => {
+      setPortalActive(false);
+      setCurrentScreen('DEBRIEF');
+      emitGameLog("Songbeast Barnaby restored successfully! Entering debrief phase.", "songbeast");
+    }, 2500);
+  };
+
   // Authentication Functions
   const handleLogout = async () => {
     try {
@@ -400,6 +442,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
         triggerShake,
         handleResetGame,
+        handleBattleAnswer,
+        handleUseSwordOfTruth,
+        handleTriggerPortal,
       }}
     >
       {children}
