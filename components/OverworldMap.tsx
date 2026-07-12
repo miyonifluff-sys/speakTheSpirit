@@ -17,13 +17,13 @@ export default function OverworldMap() {
           </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-4">
+        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6">
           <button
             onClick={() => {
               addLog("Traveling to Faith Island...", "system");
               setCurrentScreen('QUEST');
             }}
-            className="bg-cyan-500 hover:bg-cyan-400 text-black p-4 rounded-xl neo-card flex flex-col justify-between text-left h-36 relative overflow-hidden"
+            className="bg-cyan-500 hover:bg-cyan-400 text-black p-4 rounded-xl neo-card flex flex-col justify-between text-left h-64 relative overflow-hidden"
           >
             <div className="absolute right-2 bottom-2 text-7xl opacity-20">🌟</div>
             <div className="flex items-center justify-between">
@@ -41,7 +41,7 @@ export default function OverworldMap() {
               addLog("Entering Basecamp Castle & Merchant Shop.", "shop");
               setCurrentScreen('SHOP');
             }}
-            className="bg-pink-400 hover:bg-pink-300 text-black p-4 rounded-xl neo-card flex flex-col justify-between text-left h-36 relative overflow-hidden"
+            className="bg-pink-400 hover:bg-pink-300 text-black p-4 rounded-xl neo-card flex flex-col justify-between text-left h-64 relative overflow-hidden"
           >
             <div className="absolute right-2 bottom-2 text-7xl opacity-20">🏰</div>
             <div className="flex items-center justify-between">
@@ -69,7 +69,7 @@ export default function OverworldMap() {
               clearedIslands.includes('Faith Island') 
                 ? 'bg-cyan-500 hover:bg-cyan-400 text-black cursor-pointer' 
                 : 'bg-slate-700 hover:bg-slate-650 text-slate-400 cursor-not-allowed border-dashed'
-            } p-4 rounded-xl neo-card flex flex-col justify-between text-left h-36 relative overflow-hidden transition-colors`}
+            } p-4 rounded-xl neo-card flex flex-col justify-between text-left h-64 relative overflow-hidden transition-colors`}
           >
             <div className={`absolute right-2 bottom-2 text-7xl opacity-20 ${!clearedIslands.includes('Faith Island') && 'grayscale'}`}>
               {clearedIslands.includes('Faith Island') ? '🌟' : '🔒'}
@@ -99,7 +99,7 @@ export default function OverworldMap() {
                 setFeedback("Love Island is guarded by a Static shield! Buy Holy Water Spray 🧪 from the Castle Shop to bypass it.");
               }
             }}
-            className="bg-slate-700 hover:bg-slate-650 text-slate-400 p-4 rounded-xl neo-card flex flex-col justify-between text-left h-36 relative border-dashed"
+            className="bg-slate-700 hover:bg-slate-650 text-slate-400 p-4 rounded-xl neo-card flex flex-col justify-between text-left h-64 relative border-dashed"
           >
             <div className="absolute right-2 bottom-2 text-7xl opacity-10">🛡️</div>
             <div className="flex items-center justify-between">
