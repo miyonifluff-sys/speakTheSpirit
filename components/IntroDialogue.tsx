@@ -46,11 +46,11 @@ export default function IntroDialogue() {
               <div className="text-8xl mb-6">✉️</div>
               <h2 className="text-2xl font-black text-black uppercase mb-4 tracking-tighter">A Sealed Message</h2>
               <p className="text-slate-700 font-bold mb-8">The Gardener has left a vision of the Silent Valley. Break the seal to witness the truth.</p>
-              <button 
+                <button 
                 onClick={handleBreakSeal} 
                 className="bg-yellow-400 text-black font-black uppercase text-sm px-8 py-4 rounded-xl neo-btn animate-bounce"
               >
-                ✉️ BREAK THE GARDENER'S SEAL ✉️
+                ✉️ BREAK THE GARDENER&apos;S SEAL ✉️
               </button>
             </div>
           ) : (

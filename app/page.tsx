@@ -76,9 +76,9 @@ function GameContent() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 font-mono p-4 flex flex-col items-center justify-start selection:bg-yellow-400 selection:text-black">
+    <div className="w-screen h-screen flex flex-col overflow-hidden p-0 m-0 bg-slate-950 text-slate-100 font-mono selection:bg-yellow-400 selection:text-black">
       <GameHeader />
-      <main className="w-full max-w-4xl min-h-[500px] flex flex-col justify-between p-6 bg-slate-800 rounded-2xl neo-box relative overflow-hidden">
+      <main className="flex-1 w-full p-6 overflow-y-auto bg-slate-800 rounded-none neo-box relative overflow-hidden">
         {isTransactionPending && renderLoadingScreen()}
         {portalActive && renderPortal()}
         {renderScreen()}
