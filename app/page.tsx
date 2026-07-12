@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useGame } from '../context/GameContext';
 import AuthGate from '../components/AuthGate';
@@ -12,6 +12,8 @@ import QuestRiddle from '../components/QuestRiddle';
 import BattleArea from '../components/BattleArea';
 import Debrief from '../components/Debrief';
 import BasecampShop from '../components/BasecampShop';
+import OnboardingFlow from '../components/OnboardingFlow';
+import { supabase } from '../services/supabaseService';
 
 function GameContent() {
   const router = useRouter();
@@ -20,9 +22,36 @@ function GameContent() {
     currentScreen, 
     setCurrentScreen, 
     isLoggedIn, 
+    userId,
     portalActive, 
     isTransactionPending 
   } = useGame();
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
+
+  useEffect(() => {
+    if (isLoggedIn && userId) {
+      async function checkProfile() {
+        try {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('display_name')
+            .eq('id', userId)
+            .single();
+
+          if (error || !data?.display_name) {
+            setNeedsOnboarding(true);
+          } else {
+            setNeedsOnboarding(false);
+          }
+        } catch (err) {
+          console.error("Error checking profile for onboarding:", err);
+        }
+      }
+      checkProfile();
+    } else {
+      setNeedsOnboarding(false);
+    }
+  }, [isLoggedIn, userId]);
 
   if (!isLoggedIn) {
     return (
@@ -30,6 +59,10 @@ function GameContent() {
         <AuthGate />
       </div>
     );
+  }
+
+  if (needsOnboarding) {
+    return <OnboardingFlow />;
   }
 
   const renderLoadingScreen = () => (

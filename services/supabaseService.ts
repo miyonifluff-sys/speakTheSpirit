@@ -8,6 +8,12 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export interface PlayerProfile {
   id: string;
+  display_name?: string;
+  avatar_url?: string;
+  language?: string;
+  bible_version_id?: number;
+  grade_level?: string;
+  church_experience?: string;
   cupcakes: number;
   cucumbers: number;
   tickets: number;
@@ -15,6 +21,12 @@ export interface PlayerProfile {
 }
 
 export interface ProfileUpdate {
+  display_name?: string;
+  avatar_url?: string;
+  language?: string;
+  bible_version_id?: number;
+  grade_level?: string;
+  church_experience?: string;
   cupcakes?: number;
   cucumbers?: number;
   tickets?: number;
