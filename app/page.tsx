@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
 import { useGame } from '../context/GameContext';
 import AuthGate from '../components/AuthGate';
 import GameHeader from '../components/GameHeader';
@@ -16,11 +15,8 @@ import OnboardingFlow from '../components/OnboardingFlow';
 import { supabase } from '../services/supabaseService';
 
 function GameContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
   const { 
     currentScreen, 
-    setCurrentScreen, 
     isLoggedIn, 
     userId,
     portalActive, 
@@ -40,7 +36,7 @@ function GameContent() {
 
           if (error || !data?.display_name) {
             setNeedsOnboarding(true);
-          } else {
+          } else if (needsOnboarding) {
             setNeedsOnboarding(false);
           }
         } catch (err) {
@@ -48,10 +44,10 @@ function GameContent() {
         }
       }
       checkProfile();
-    } else {
+    } else if (needsOnboarding) {
       setNeedsOnboarding(false);
     }
-  }, [isLoggedIn, userId]);
+  }, [isLoggedIn, userId, needsOnboarding]);
 
   if (!isLoggedIn) {
     return (
