@@ -38,41 +38,81 @@ export default function CrossroadsScene({ onComplete }: { onComplete?: () => voi
 
   const [challengeFeedback, setChallengeFeedback] = useState("");
 
+  // Character Selection (Hardcoded 'girl' for demo)
   const [selectedGender] = useState<'girl' | 'boy'>('girl');
   const characterPath = selectedGender === 'girl' 
     ? "/characters/girlnobackground.png" 
     : "/characters/boynobackground.png";
 
-  const handleMove = (direction: string) => {
-    if (stageState === 'fork') {
-      if (direction === 'LEFT' || direction === 'UP') {
-        setStageState('ghosts');
-        setAngelChat("Oh no! The ghosts of doubt and distraction! This isn't the right way. Use the D-Pad or Down arrow to go back.");
-        addLog("Wandered into the ghosts.", "system");
-      } else if (direction === 'RIGHT') {
-        setStageState('x-marks');
-        setAngelChat("Go click X! You found the hidden dirt trail. The Gardener left something here for you.");
-        addLog("Found the dirt trail.", "system");
+  // 🎮 NEW: Physical Canvas Coordinates & Speed
+  const [playerPos, setPlayerPos] = useState({ x: 490, y: 550 }); // Starting near bottom center
+  const playerSpeed = 8;
+
+  // 🗺️ WAYPOINT COLLISION MATH (Replaces handleMove)
+  const isPositionOnPath = (x: number, y: number): boolean => {
+    const pathTolerance = 35; 
+
+    const pathWaypoints = [
+      // MAIN TRUNK
+      { x: 490, y: 600 }, { x: 490, y: 550 }, { x: 490, y: 500 }, 
+      { x: 490, y: 450 }, { x: 490, y: 400 }, { x: 480, y: 350 },
+      // FOREST PATH (Left)
+      { x: 430, y: 330 }, { x: 350, y: 310 }, { x: 280, y: 290 }, 
+      { x: 220, y: 250 }, { x: 180, y: 190 }, { x: 170, y: 130 }, 
+      { x: 170, y: 70 },  { x: 170, y: 20 },
+      // DESERT PATH (Right)
+      { x: 550, y: 320 }, { x: 630, y: 290 }, { x: 710, y: 270 }, 
+      { x: 770, y: 240 }, { x: 760, y: 170 }, { x: 720, y: 120 }, 
+      { x: 740, y: 70 },  { x: 800, y: 40 },
+    ];
+
+    for (const pt of pathWaypoints) {
+      const distance = Math.sqrt(Math.pow(x - pt.x, 2) + Math.pow(y - pt.y, 2));
+      if (distance <= pathTolerance) {
+        return true;
       }
-    } else if (stageState === 'ghosts' && direction === 'DOWN') {
-      setStageState('fork');
-      setAngelChat("Phew, back at the crossroads. Try the other path!");
     }
+    return false;
+  };
+
+  const attemptPhysicalMove = (dx: number, dy: number) => {
+    setPlayerPos((prev) => {
+      const targetX = prev.x + dx;
+      const targetY = prev.y + dy;
+
+      if (targetX < 0 || targetX > 800 || targetY < 0 || targetY > 600) {
+        return prev;
+      }
+
+      // Check if they hit the top exit triggers
+      if (targetY <= 60) {
+        if (targetX < 300 && stageState === 'fork') {
+          setStageState('ghosts');
+          setAngelChat("Oh no! The ghosts of doubt and distraction! Use Down or S to turn back.");
+          addLog("Wandered into the ghosts.", "system");
+        } else if (targetX > 500 && stageState === 'fork') {
+          setStageState('x-marks');
+          setAngelChat("You made it to the clearing! Look, there's a giant 'X' on the ground. Let's dig!");
+          addLog("Found the dirt trail.", "system");
+        }
+      }
+
+      if (isPositionOnPath(targetX, targetY)) {
+        return { x: targetX, y: targetY };
+      }
+
+      return prev;
+    });
   };
 
   useEffect(() => {
-    if (stageState === 'fork') {
-      window.focus();
-    }
+    if (stageState !== 'fork') return;
 
-    const handleKeyDown = (e: KeyboardEvent) => {
+    // 🌟 Changed to 'e: any' to stop TypeScript from throwing React/DOM conflict errors
+    const handleKeyDown = (e: any) => {
       const activeEl = document.activeElement;
       if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
         return; 
-      }
-
-      if (stageState !== 'fork' && stageState !== 'ghosts') {
-        return;
       }
 
       switch (e.key) {
@@ -80,25 +120,25 @@ export default function CrossroadsScene({ onComplete }: { onComplete?: () => voi
         case 'w':
         case 'W':
           e.preventDefault();
-          handleMove('UP');
+          attemptPhysicalMove(0, -playerSpeed);
           break;
         case 'ArrowDown':
         case 's':
         case 'S':
           e.preventDefault();
-          handleMove('DOWN');
+          attemptPhysicalMove(0, playerSpeed);
           break;
         case 'ArrowLeft':
         case 'a':
         case 'A':
           e.preventDefault();
-          handleMove('LEFT');
+          attemptPhysicalMove(-playerSpeed, 0);
           break;
         case 'ArrowRight':
         case 'd':
         case 'D':
           e.preventDefault();
-          handleMove('RIGHT');
+          attemptPhysicalMove(playerSpeed, 0);
           break;
         default:
           break;
@@ -106,9 +146,7 @@ export default function CrossroadsScene({ onComplete }: { onComplete?: () => voi
     };
 
     window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, [stageState]);
 
   const loadQuestionAndExplanation = async (remedialPrompt: string = "", currentAttemptIndex: number) => {
@@ -371,19 +409,58 @@ export default function CrossroadsScene({ onComplete }: { onComplete?: () => voi
           )}
 
           {stageState === 'fork' && (
-            <div className="relative w-full h-full flex">
-              <div className="w-1/2 h-full bg-slate-800 border-r-4 border-black border-dashed flex items-center justify-center">
-                <span className="text-slate-500 font-black uppercase rotate-[-45deg] tracking-wider">Paved Path</span>
-              </div>
-              <div className="w-1/2 h-full bg-amber-900/40 flex items-center justify-center">
-                <span className="text-amber-600/80 font-black uppercase rotate-[45deg] tracking-wider">Dirt Path</span>
-              </div>
-              <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-10 w-24 h-24 drop-shadow-md animate-bounce">
-                <img 
-                  src={characterPath} 
-                  alt="Player Character" 
-                  className="w-full h-full object-contain"
-                />
+            <div className="w-full h-full flex items-center justify-center bg-slate-950 p-2">
+              <div 
+                className="relative border-4 border-black shadow-[4px_4px_0px_#000] bg-slate-800 overflow-hidden"
+                style={{
+                  width: '800px',
+                  height: '600px',
+                  backgroundImage: "url('/crossroads_map.png')",
+                  backgroundSize: '100% 100%',
+                  backgroundPosition: 'center'
+                }}
+              >
+                {/* 🏃‍♂️ Dynamically Positioned Character */}
+                <div 
+                  className="absolute w-16 h-16 -translate-x-1/2 -translate-y-1/2 transition-all duration-75 ease-out z-20"
+                  style={{
+                    left: `${playerPos.x}px`,
+                    top: `${playerPos.y}px`,
+                  }}
+                >
+                  <img 
+                    src={characterPath} 
+                    alt="Player Character" 
+                    className="w-full h-full object-contain drop-shadow-xl"
+                  />
+                </div>
+
+                {/* 🔴 VISUAL DEBUG OVERLAY (Delete or comment out when you are done testing!) */}
+                {[
+                  // MAIN TRUNK
+                  { x: 490, y: 600 }, { x: 490, y: 550 }, { x: 490, y: 500 }, 
+                  { x: 490, y: 450 }, { x: 490, y: 400 }, { x: 480, y: 350 },
+                  // FOREST PATH (Left)
+                  { x: 430, y: 330 }, { x: 350, y: 310 }, { x: 280, y: 290 }, 
+                  { x: 220, y: 250 }, { x: 180, y: 190 }, { x: 170, y: 130 }, 
+                  { x: 170, y: 70 },  { x: 170, y: 20 },
+                  // DESERT PATH (Right)
+                  { x: 550, y: 320 }, { x: 630, y: 290 }, { x: 710, y: 270 }, 
+                  { x: 770, y: 240 }, { x: 760, y: 170 }, { x: 720, y: 120 }, 
+                  { x: 740, y: 70 },  { x: 800, y: 40 },
+                ].map((pt, i) => (
+                  <div 
+                    key={i}
+                    className="absolute rounded-full bg-red-500/40 border-2 border-red-500 pointer-events-none z-10"
+                    style={{
+                      width: '70px', // Matches your 35px pathTolerance (35 * 2)
+                      height: '70px',
+                      left: `${pt.x}px`,
+                      top: `${pt.y}px`,
+                      transform: 'translate(-50%, -50%)' // Centers the circle exactly on the coordinate point
+                    }}
+                  />
+                ))}
               </div>
             </div>
           )}
@@ -561,26 +638,26 @@ export default function CrossroadsScene({ onComplete }: { onComplete?: () => voi
         {(stageState === 'fork' || stageState === 'ghosts') && (
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 bg-slate-950 p-3 rounded-full border-4 border-black shadow-[0_4px_0_#000] z-20">
             <button 
-              onClick={() => handleMove('UP')} 
+              onClick={() => attemptPhysicalMove(0, -playerSpeed)} 
               className="w-12 h-12 bg-slate-100 text-black text-xl font-black border-2 border-black rounded hover:bg-white active:translate-y-1 shadow-[1px_1px_0px_#000]"
             >
               ↑
             </button>
             <div className="flex gap-1">
               <button 
-                onClick={() => handleMove('LEFT')} 
+                onClick={() => attemptPhysicalMove(-playerSpeed, 0)} 
                 className="w-12 h-12 bg-slate-100 text-black text-xl font-black border-2 border-black rounded hover:bg-white active:translate-y-1 shadow-[1px_1px_0px_#000]"
               >
                 ←
               </button>
               <button 
-                onClick={() => handleMove('DOWN')} 
+                onClick={() => attemptPhysicalMove(0, playerSpeed)} 
                 className="w-12 h-12 bg-slate-100 text-black text-xl font-black border-2 border-black rounded hover:bg-white active:translate-y-1 shadow-[1px_1px_0px_#000]"
               >
                 ↓
               </button>
               <button 
-                onClick={() => handleMove('RIGHT')} 
+                onClick={() => attemptPhysicalMove(playerSpeed, 0)} 
                 className="w-12 h-12 bg-slate-100 text-black text-xl font-black border-2 border-black rounded hover:bg-white active:translate-y-1 shadow-[1px_1px_0px_#000]"
               >
                 →
