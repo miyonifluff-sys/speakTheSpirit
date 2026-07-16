@@ -301,6 +301,9 @@ export async function generateAdaptiveQuestion(
 /**
  * 🧠 Evaluates the child's chat answer to Angel Gabriel's remedial comprehension question.
  */
+/**
+ * 🧠 Evaluates the child's chat answer to Angel Gabriel's remedial comprehension question.
+ */
 export async function verifyComprehension(
   userId: string,
   comprehensionQuestion: string,
@@ -355,7 +358,7 @@ export async function verifyComprehension(
           { role: "system", content: systemPrompt },
           { role: "user", content: "Evaluate the child's comprehension reply now." }
         ],
-        temperature: 0.5
+        temperature: 0.5 
       }),
       signal: AbortSignal.timeout(15000)
     });
@@ -366,17 +369,34 @@ export async function verifyComprehension(
 
     const data = await response.json();
     const rawText = data.choices[0].message.content.trim();
-    const cleanJsonText = rawText.replace(/^```json\s*|```$/g, '');
-    const parsedEvaluation = JSON.parse(cleanJsonText);
+    
+    // 🛡️ BULLETPROOF JSON PARSER
+    let parsedEvaluation;
+    try {
+      const startIndex = rawText.indexOf('{');
+      const endIndex = rawText.lastIndexOf('}');
+      
+      if (startIndex === -1 || endIndex === -1) {
+        throw new Error("No JSON object found in response.");
+      }
+      
+      const cleanJsonString = rawText.substring(startIndex, endIndex + 1);
+      parsedEvaluation = JSON.parse(cleanJsonString);
+    } catch (parseError) {
+      console.error("Failed to parse JSON from Gloo:", rawText);
+      throw parseError; // Push to the outer catch block
+    }
 
     return { evaluation: parsedEvaluation };
 
   } catch (error: unknown) {
     console.error('Error in verifyComprehension:', error);
+    
+    // 🛑 STRICT FALLBACK: Don't let them pass if it crashes!
     return {
       evaluation: {
-        isUnderstood: true,
-        reply: "I love that answer! You've got it. Let's try our next challenge!"
+        isUnderstood: false, 
+        reply: "The heavenly static is a bit loud right now, I couldn't quite hear that! Can you try explaining it one more time?"
       }
     };
   }
