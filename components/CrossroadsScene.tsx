@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useGame } from '../context/GameContext';
 import { addLog } from '../utils/gameEvents';
-import { askAngelGabriel, generateAdaptiveQuestion } from '../app/actions/gloo';
+import { askAngelGabriel, generateAdaptiveQuestion, verifyComprehension } from '../app/actions/gloo';
 
 interface ChatMessage {
   sender: 'you' | 'angel';
@@ -21,24 +21,23 @@ interface DynamicQuestion {
 export default function CrossroadsScene({ onComplete }: { onComplete?: () => void }) {
   const { setCurrentScreen, setQuestObjectClicked } = useGame();
 
-  // 'riddle-intro' | 'fork' | 'ghosts' | 'x-marks' | 'chest' | 'lock-challenge' | 'solved'
   const [stageState, setStageState] = useState('riddle-intro');
   const [explanationAccepted, setExplanationAccepted] = useState(false);
 
-  // Dynamic Question States
+  // 'none' | 'pending-chat'
+  const [verificationState, setVerificationState] = useState<'none' | 'pending-chat'>('none');
+  const [activeComprehensionQuestion, setActiveComprehensionQuestion] = useState("");
+
   const [currentQuestion, setCurrentQuestion] = useState<DynamicQuestion | null>(null);
   const [attempts, setAttempts] = useState(0);
 
-  // Right Console States
   const [angelChat, setAngelChat] = useState("Greetings, Traveler! Before you take a single step, you must decode the riddle above. Click the scroll on the left to begin!");
   const [askInput, setAskInput] = useState("");
   const [chatLog, setChatLog] = useState<ChatMessage[]>([]);
   const [isThinking, setIsThinking] = useState(false);
 
-  // Challenge Feedback (e.g. "Wrong answer!")
   const [challengeFeedback, setChallengeFeedback] = useState("");
 
-  // Character Selection (Hardcoded 'girl' for demo)
   const [selectedGender] = useState<'girl' | 'boy'>('girl');
   const characterPath = selectedGender === 'girl' 
     ? "/characters/girlnobackground.png" 
@@ -61,21 +60,17 @@ export default function CrossroadsScene({ onComplete }: { onComplete?: () => voi
     }
   };
 
-  // Keyboard Navigation Handler (Auto-focuses so arrow keys work immediately)
   useEffect(() => {
-    // 1. Force focus onto the game window when the fork stage starts
     if (stageState === 'fork') {
       window.focus();
     }
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      // 🚫 Disable moving when typing inside input boxes
       const activeEl = document.activeElement;
       if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
         return; 
       }
 
-      // 🚫 Don't allow movement if we are in the intro, challenge, or solved screens
       if (stageState !== 'fork' && stageState !== 'ghosts') {
         return;
       }
@@ -114,13 +109,11 @@ export default function CrossroadsScene({ onComplete }: { onComplete?: () => voi
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [stageState]); // Keeps listeners completely synchronized with current stage
+  }, [stageState]);
 
-  // 📦 Pulls an explanation and generates a fresh adaptive question
   const loadQuestionAndExplanation = async (remedialPrompt: string = "", currentAttemptIndex: number) => {
     setIsThinking(true);
     
-    // 1. Define the rules for this specific scene's concept
     const conceptName = "Faith";
     const correctRule = "Active loyalty, deep trust, and doing what the Gardener says (taking action).";
     const incorrectRule = "Just memorizing lists of facts and trivia about the Gardener, or passive head-knowledge without movement.";
@@ -133,25 +126,31 @@ export default function CrossroadsScene({ onComplete }: { onComplete?: () => voi
     
     const chosenMetaphor = metaphors[currentAttemptIndex % metaphors.length];
 
+    const dynamicComprehensionQuestion = currentAttemptIndex === 1 
+      ? "If you just stare at a door handle, how do you get to the other side? What physical action must you take?"
+      : "If you want the wind to fly your kite, what must you physically do with the kite string?";
+    
+    setActiveComprehensionQuestion(dynamicComprehensionQuestion);
+
     const explanationInstructions = `
       The player is learning about ${conceptName}. This is attempt number ${currentAttemptIndex + 1}.
       IMPORTANT: Do not say "That's a great question" or acknowledge a user query.
       
       ${remedialPrompt ? `
         REMEDIAL TEACHING FOCUS:
-        The child just answered a question incorrectly. ${remedialPrompt}
+        The child just answered a multiple-choice question incorrectly. ${remedialPrompt}
         Explain why their choice wasn't true ${conceptName}, and pivot to why the correct choice was. Keep it extremely encouraging!
+        At the very end of your response, you MUST ask the child this exact comprehension question to verify they are reading: "${dynamicComprehensionQuestion}"
       ` : `
         INTRODUCTORY TEACHING FOCUS:
         Explain that the ancient Greek word for faith is "Pistis" (pronounced PEES-tis), which means active trust.
+        Close or reinforce your lesson using this EXACT analogy: "${chosenMetaphor}".
       `}
       
-      Always close or reinforce your lesson using this EXACT analogy: "${chosenMetaphor}".
-      Keep the entire message warm, kind, and brief (maximum 3 sentences so it fits).
+      Keep the entire message warm, kind, and brief (maximum 3 sentences).
     `;
 
     try {
-      // 2. Get the dynamic teaching content
       const angelResponse = await askAngelGabriel(
         "user_123", 
         remedialPrompt ? "Teach me from my mistake!" : `Introduce ${conceptName} and Pistis dynamically.`, 
@@ -164,7 +163,6 @@ export default function CrossroadsScene({ onComplete }: { onComplete?: () => voi
         setChatLog(prev => [...prev, { sender: 'angel', text: `Remember, faith is active trust. ${chosenMetaphor}` }]);
       }
 
-      // 3. Generate the dynamic question using our SCENE CONCEPT RULES!
       const quizResponse = await generateAdaptiveQuestion(
         "user_123", 
         conceptName,
@@ -185,65 +183,55 @@ export default function CrossroadsScene({ onComplete }: { onComplete?: () => voi
     }
   };
 
-  // Called when clicking the chest initially
   const handleChestClick = async () => {
     setStageState('lock-challenge');
     setExplanationAccepted(false);
+    setVerificationState('none');
     setAttempts(0);
     setAngelChat("Hold on, Traveler! To unlock this chest, we must first learn what Faith truly is. Let me teach you...");
-    await loadQuestionAndExplanation("", 0); // 👈 Explicitly start at 0
+    await loadQuestionAndExplanation("", 0);
   };
 
-  // Evaluates answer inputs
   const handleAnswerSubmit = async (selectedOption: 'A' | 'B' | 'C') => {
     if (!currentQuestion) return;
 
-    // Calculate the text of the option they selected
     const chosenText = selectedOption === 'A' 
       ? currentQuestion.optionA 
       : (selectedOption === 'B' ? currentQuestion.optionB : currentQuestion.optionC);
 
     if (selectedOption === currentQuestion.correctOption) {
-      // 🌟 SUCCESS! 
       setStageState('solved');
       addLog("Successfully broke the lock!", "system");
       setIsThinking(true);
 
-      // Tell Angel Gabriel to celebrate and solidify their understanding
       const successPrompt = `
         The player answered the question: "${currentQuestion.question}" correctly!
         They chose the correct answer: "${chosenText}".
         
         Write a very short, highly enthusiastic celebration (1-2 sentences).
-        Briefly explain WHY this answer represents true faith (Pistis/active trust) and congratulate them on breaking the lock.
-        Keep it warm, fun, and extremely brief so it fits the box!
+        Briefly explain WHY this answer represents true faith (active trust) and congratulate them on breaking the lock.
+        Keep it warm, fun, and extremely brief!
       `;
 
       try {
-        const res = await askAngelGabriel(
-          "user_123", 
-          "Explain why my correct answer was right!", 
-          successPrompt
-        );
+        const res = await askAngelGabriel("user_123", "Explain why my correct answer was right!", successPrompt);
         setIsThinking(false);
         if (res.reply) {
           setAngelChat(res.reply);
           setChatLog(prev => [...prev, { sender: 'angel', text: res.reply }]);
         } else {
-          // Fallback celebration
-          const fallbackMsg = `Spot on! You chose: "${chosenText}". That is true faith—not just looking at a path, but actually stepping out on it! Let's head to the next trial!`;
+          const fallbackMsg = `Spot on! You chose: "${chosenText}". That is true faith—not just looking at a path, but actually stepping out on it!`;
           setAngelChat(fallbackMsg);
           setChatLog(prev => [...prev, { sender: 'angel', text: fallbackMsg }]);
         }
       } catch (err) {
         setIsThinking(false);
-        const fallbackMsg = `Spot on! You chose: "${chosenText}". That is true faith—not just looking at a path, but actually stepping out on it! Let's head to the next trial!`;
+        const fallbackMsg = `Spot on! You chose: "${chosenText}". That is true faith!`;
         setAngelChat(fallbackMsg);
         setChatLog(prev => [...prev, { sender: 'angel', text: fallbackMsg }]);
       }
 
     } else {
-      // WRONG ANSWER: Calculate what they chose vs. what the correct answer was
       const correctOptionLetter = currentQuestion.correctOption;
       const correctText = correctOptionLetter === 'A' 
         ? currentQuestion.optionA 
@@ -252,11 +240,12 @@ export default function CrossroadsScene({ onComplete }: { onComplete?: () => voi
       const nextAttempt = attempts + 1;
       setAttempts(nextAttempt);
       
-      setChallengeFeedback("Not quite! Let's read Angel Gabriel's correction and try a new challenge!");
-      setExplanationAccepted(false); // Relock the UI until they accept the new explanation
-      setAngelChat("That wasn't quite it, Messenger. Let me explain why that choice didn't hit the mark...");
+      setChallengeFeedback("Not quite! Angel Gabriel is testing your understanding in the chat before you can retry.");
+      setExplanationAccepted(false); 
+      setVerificationState('pending-chat'); 
+      
+      setAngelChat("That wasn't quite it, Messenger. Answer my question in the chat console on the right so we can clear this up!");
 
-      // Send exact wrong choice vs. correct choice to Gloo so it can explain the difference
       const remedialPrompt = `
         The question asked was: "${currentQuestion.question}".
         The child chose: "${chosenText}" (which is incorrect because it is either passive head-knowledge or empty action).
@@ -277,26 +266,61 @@ export default function CrossroadsScene({ onComplete }: { onComplete?: () => voi
     setChatLog(prev => [...prev, { sender: 'you', text: currentQuestionText }]);
     setIsThinking(true);
 
-    const chatContextPrompt = `
-      Current Stage: The Crossroads (Faith/Pistis).
-      The child is trying to answer a dynamic multiple choice question.
-      Active question on screen: "${currentQuestion?.question}"
-      Correct answer concept: ${currentQuestion?.correctOption === 'A' ? currentQuestion?.optionA : currentQuestion?.optionB}.
-      Guide them towards the active option without stating the letters 'A' or 'B'.
-    `;
+    if (verificationState === 'pending-chat') {
+      try {
+        const res = await verifyComprehension(
+          "user_123",
+          activeComprehensionQuestion,
+          currentQuestionText,
+          "Faith is active trust, physically stepping forward, walking through a door, or letting go of a string."
+        );
+        setIsThinking(false);
 
-    try {
-      const res = await askAngelGabriel("user_123", currentQuestionText, chatContextPrompt);
-      setIsThinking(false);
-
-      if (res.error) {
-        setChatLog(prev => [...prev, { sender: 'angel', text: res.error }]);
-      } else if (res.reply) {
-        setChatLog(prev => [...prev, { sender: 'angel', text: res.reply }]);
+        if (res.evaluation) {
+          setChatLog(prev => [...prev, { sender: 'angel', text: res.evaluation.reply }]);
+          
+          if (res.evaluation.isUnderstood) {
+            setVerificationState('none'); 
+            setExplanationAccepted(true); 
+            setChallengeFeedback("");
+            setAngelChat("Fantastic understanding! Now, try answering this brand-new multiple choice challenge on the left.");
+          }
+        }
+      } catch (err) {
+        setIsThinking(false);
+        setChatLog(prev => [...prev, { sender: 'angel', text: "I couldn't hear that clearly, but I believe in you! Let's try the next question." }]);
+        setVerificationState('none');
+        setExplanationAccepted(true);
       }
-    } catch (err) {
-      setIsThinking(false);
-      setChatLog(prev => [...prev, { sender: 'angel', text: "The static is too loud right now! Ask me again!" }]);
+    } else {
+      const getCorrectOptionText = () => {
+        if (!currentQuestion) return "";
+        if (currentQuestion.correctOption === 'A') return currentQuestion.optionA;
+        if (currentQuestion.correctOption === 'B') return currentQuestion.optionB;
+        return currentQuestion.optionC || "";
+      };
+
+      const chatContextPrompt = `
+        Current Stage: The Crossroads (Faith/Pistis).
+        The child is trying to answer a dynamic multiple choice question.
+        Active question on screen: "${currentQuestion?.question}"
+        Correct answer concept: "${getCorrectOptionText()}".
+        Guide them towards the active option without stating the letters 'A', 'B', or 'C'.
+      `;
+
+      try {
+        const res = await askAngelGabriel("user_123", currentQuestionText, chatContextPrompt);
+        setIsThinking(false);
+
+        if (res.error) {
+          setChatLog(prev => [...prev, { sender: 'angel', text: res.error }]);
+        } else if (res.reply) {
+          setChatLog(prev => [...prev, { sender: 'angel', text: res.reply }]);
+        }
+      } catch (err) {
+        setIsThinking(false);
+        setChatLog(prev => [...prev, { sender: 'angel', text: "The static is too loud right now! Ask me again!" }]);
+      }
     }
   };
 
@@ -482,29 +506,34 @@ export default function CrossroadsScene({ onComplete }: { onComplete?: () => voi
                     <div className="bg-slate-800 border-2 border-black p-5 rounded-lg shadow-[4px_4px_0px_#000] max-w-sm">
                       <span className="text-4xl animate-bounce">👼</span>
                       <h3 className="font-black uppercase text-amber-400 text-sm mt-2 mb-1">
-                        {attempts > 0 ? "Let's try another angle!" : "Divine Wisdom Required"}
+                        {verificationState === 'pending-chat' ? "Chat Challenge Active!" : "Divine Wisdom Required"}
                       </h3>
                       <p className="text-xs text-slate-300 leading-relaxed mb-4">
-                        Read Angel Gabriel's dynamic lesson in the Chat Console on the right first!
+                        {verificationState === 'pending-chat' 
+                          ? "Explain the concept to Angel Gabriel in the Chat box on the right to unlock your retry!"
+                          : "Read Angel Gabriel's dynamic lesson in the Chat Console on the right first!"
+                        }
                       </p>
-                      <button 
-                        disabled={isThinking}
-                        onClick={() => {
-                          setExplanationAccepted(true);
-                          setChallengeFeedback(""); // reset feedback for new attempt
-                          setAngelChat("Ready to test your knowledge? Answer the fresh question on the left now!");
-                        }}
-                        className="bg-yellow-400 hover:bg-yellow-300 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed text-black font-black text-xs py-2.5 px-6 rounded border-2 border-black shadow-[2px_2px_0px_#000] transition-transform active:translate-y-0.5 uppercase"
-                      >
-                        {isThinking ? "Angel is preparing explanation..." : "Okay, sounds good! 👍"}
-                      </button>
+                      {verificationState !== 'pending-chat' && (
+                        <button 
+                          disabled={isThinking}
+                          onClick={() => {
+                            setExplanationAccepted(true);
+                            setChallengeFeedback(""); 
+                            setAngelChat("Ready to test your knowledge? Answer the fresh question on the left now!");
+                          }}
+                          className="bg-yellow-400 hover:bg-yellow-300 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed text-black font-black text-xs py-2.5 px-6 rounded border-2 border-black shadow-[2px_2px_0px_#000] transition-transform active:translate-y-0.5 uppercase"
+                        >
+                          {isThinking ? "Angel is preparing explanation..." : "Okay, sounds good! 👍"}
+                        </button>
+                      )}
                     </div>
                   </div>
                 )}
               </div>
 
               <div className="text-[10px] text-slate-500 text-center uppercase tracking-widest border-t border-slate-800 pt-2 mt-4 shrink-0">
-                Need a hint? Ask Angel Gabriel on the right ➔
+                {verificationState === 'pending-chat' ? "👉 Type your answer in the console ➔" : "Need a hint? Ask Angel Gabriel on the right ➔"}
               </div>
             </div>
           )}
@@ -622,15 +651,23 @@ export default function CrossroadsScene({ onComplete }: { onComplete?: () => voi
               value={askInput}
               onChange={(e) => setAskInput(e.target.value)}
               disabled={isThinking}
-              placeholder={isThinking ? "Angel is formulating an answer..." : "Ask a question..."}
-              className="flex-1 bg-white text-black placeholder-slate-500 border-2 border-black p-2 text-sm font-bold disabled:bg-slate-100 disabled:cursor-not-allowed"
+              placeholder={
+                isThinking 
+                  ? "Angel is formulating..." 
+                  : verificationState === 'pending-chat' 
+                    ? "Type your answer to Gabriel..." 
+                    : "Ask a question..."
+              }
+              className={`flex-1 bg-white text-black placeholder-slate-500 border-2 border-black p-2 text-sm font-bold disabled:bg-slate-100 disabled:cursor-not-allowed ${
+                verificationState === 'pending-chat' ? 'ring-2 ring-yellow-500 animate-pulse' : ''
+              }`}
             />
             <button 
               type="submit" 
               disabled={isThinking}
               className="bg-blue-500 text-white font-black px-4 py-2 border-2 border-black shadow-[2px_2px_0px_#000] hover:bg-blue-400 active:translate-y-1 disabled:bg-slate-400 disabled:cursor-not-allowed"
             >
-              ASK
+              {verificationState === 'pending-chat' ? "ANSWER" : "ASK"}
             </button>
           </form>
         </div>
