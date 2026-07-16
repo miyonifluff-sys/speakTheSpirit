@@ -40,17 +40,28 @@ export default function CrossroadsMap({
     { x: 19, y: 313 }, { x: 73, y: 302 }, { x: 134, y: 290 }, { x: 185, y: 300 }, { x: 239, y: 300 }, { x: 301, y: 317 }, { x: 347, y: 335 }, { x: 412, y: 338 }, { x: 472, y: 329 }, { x: 494, y: 367 }, { x: 418, y: 382 }, { x: 361, y: 382 }, { x: 310, y: 370 }, { x: 264, y: 354 }, { x: 208, y: 344 }, { x: 145, y: 344 }, { x: 92, y: 350 }, { x: 48, y: 361 }, { x: 8, y: 382 }, { x: 517, y: 302 }, { x: 544, y: 350 }, { x: 568, y: 286 }, { x: 602, y: 334 }
   ];
 
-  // 🎯 Move player to left entrance when they load into the second map
+  const ghostWaypoints = [
+    // A straight path down the center for the player to escape the ghosts
+    { x: 400, y: 150 }, { x: 400, y: 200 }, { x: 400, y: 250 }, { x: 400, y: 300 },
+    { x: 400, y: 350 }, { x: 400, y: 400 }, { x: 400, y: 450 }, { x: 400, y: 500 },
+    { x: 400, y: 550 }, { x: 400, y: 600 }
+  ];
+
+  // 🎯 Move player to specific entrances when changing maps
   useEffect(() => {
     if (stageState === 'x-marks') {
-      setPlayerPos({ x: 50, y: 360 }); 
+      setPlayerPos({ x: 50, y: 360 }); // Spawn left
+    } else if (stageState === 'ghosts') {
+      setPlayerPos({ x: 400, y: 200 }); // Spawn high up in the ghost path
     }
   }, [stageState]);
 
   // 📐 COLLISION MATH
   const isPositionOnPath = (x: number, y: number): boolean => {
     const pathTolerance = 45; 
-    const currentWaypoints = stageState === 'fork' ? forkWaypoints : xMarksWaypoints;
+    let currentWaypoints = forkWaypoints;
+    if (stageState === 'x-marks') currentWaypoints = xMarksWaypoints;
+    if (stageState === 'ghosts') currentWaypoints = ghostWaypoints;
 
     for (const pt of currentWaypoints) {
       const distance = Math.sqrt(Math.pow(x - pt.x, 2) + Math.pow(y - pt.y, 2));
@@ -76,29 +87,32 @@ export default function CrossroadsMap({
   // 🚨 EVENT TRIGGERS (Watched safely here)
   useEffect(() => {
     if (stageState === 'fork' && playerPos.y <= 60) {
-      // Fork Exits (Your custom waypoints exit left around x:120, and right around x:700)
       if (playerPos.x < 300) {
         onHitGhost();
       } else if (playerPos.x > 500) {
         onHitXMarks();
       }
     } else if (stageState === 'x-marks') {
-      // Music Note Trigger Check
       const musicNoteX = 560;
       const musicNoteY = 320;
       const distanceToNote = Math.sqrt(Math.pow(playerPos.x - musicNoteX, 2) + Math.pow(playerPos.y - musicNoteY, 2));
       
-      // If player gets within 50px of the note, trigger the chest!
       if (distanceToNote <= 50) {
         onClickChest();
       }
+    } else if (stageState === 'ghosts') {
+      // If the player successfully walks back down to the bottom edge of the screen
+      if (playerPos.y >= 580) {
+        setPlayerPos({ x: 170, y: 100 }); // Spawn them right at the top of the spooky fork path
+        onReturnToFork();
+      }
     }
-  }, [playerPos, stageState, onHitGhost, onHitXMarks, onClickChest]);
+  }, [playerPos, stageState, onHitGhost, onHitXMarks, onClickChest, onReturnToFork]);
 
   // ⌨️ KEYBOARD LISTENERS
   useEffect(() => {
-    // Active for BOTH playable maps
-    if (stageState !== 'fork' && stageState !== 'x-marks') return;
+    // Active for all three playable maps!
+    if (stageState !== 'fork' && stageState !== 'x-marks' && stageState !== 'ghosts') return;
 
     const handleKeyDown = (e: any) => {
       const activeEl = document.activeElement;
@@ -121,19 +135,17 @@ export default function CrossroadsMap({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [stageState]);
 
-  const handleReturnClick = () => {
-    setPlayerPos({ x: 368, y: 400 }); // Safely place them back on the main trunk
-    onReturnToFork();
-  };
-
   // Determine which background to show dynamically
-  const currentBackground = stageState === 'fork' ? "url('/crossroads_map.png')" : "url('/note_on_path.png')";
+  const currentBackground = 
+    stageState === 'fork' ? "url('/crossroads_map.png')" : 
+    stageState === 'x-marks' ? "url('/note_on_path.png')" : 
+    "url('/ghosts.png')";
 
   return (
     <div className="w-full h-full relative overflow-hidden flex items-center justify-center bg-slate-950 p-2">
       
-      {/* 🟢 PLAYABLE MAP STAGES (Fork OR X-Marks) */}
-      {(stageState === 'fork' || stageState === 'x-marks') && (
+      {/* 🟢 PLAYABLE MAP STAGES (Fork, X-Marks, or Ghosts) */}
+      {(stageState === 'fork' || stageState === 'x-marks' || stageState === 'ghosts') && (
         <div 
           className="relative border-4 border-black shadow-[4px_4px_0px_#000] bg-slate-800 overflow-hidden transition-all"
           style={{
@@ -147,16 +159,15 @@ export default function CrossroadsMap({
             className="absolute w-24 h-24 -translate-x-1/2 -translate-y-[80%] transition-all duration-75 ease-out z-20"
             style={{ left: `${playerPos.x}px`, top: `${playerPos.y}px` }}
           >
-            <img src={characterPath} alt="Character" className="w-full h-full object-contain drop-shadow-xl" />
+            <img 
+              src={characterPath} 
+              alt="Character" 
+              // Dynamically apply grayscale and pulse if they are trapped in the ghosts stage!
+              className={`w-full h-full object-contain drop-shadow-xl transition-all ${
+                stageState === 'ghosts' ? 'filter grayscale animate-pulse' : ''
+              }`} 
+            />
           </div>
-
-          {/* 🎵 TARGET DEBUG RING FOR MUSIC NOTE (Remove later if you want) */}
-          {stageState === 'x-marks' && (
-             <div 
-               className="absolute rounded-full bg-blue-500/40 border-4 border-blue-500 animate-pulse pointer-events-none z-10"
-               style={{ width: '100px', height: '100px', left: `560px`, top: `320px`, transform: 'translate(-50%, -50%)' }}
-             />
-          )}
 
           {/* D-PAD CONTROLS */}
           <div className="absolute bottom-4 right-4 flex flex-col items-center gap-1 bg-slate-950 p-3 rounded-full border-4 border-black shadow-[0_4px_0_#000] z-30 opacity-80 hover:opacity-100 transition-opacity">
@@ -170,29 +181,28 @@ export default function CrossroadsMap({
         </div>
       )}
 
-      {/* 👻 GHOST STAGE */}
-      {stageState === 'ghosts' && (
-        <div className="w-full h-full bg-slate-950 flex flex-col items-center justify-center text-center p-8">
-          <div className="flex gap-8 mb-8 text-6xl animate-pulse">
-            <span>👻</span><span className="mt-8">👻</span>
-          </div>
-          <div className="w-32 h-32 drop-shadow-md">
-            <img src={characterPath} alt="Character" className="w-full h-full object-contain filter grayscale" />
-          </div>
-          <button 
-            onClick={handleReturnClick}
-            className="mt-8 bg-red-600 hover:bg-red-500 text-white font-black p-4 border-4 border-black shadow-[4px_4px_0px_#000] uppercase tracking-wide cursor-pointer"
-          >
-            WRONG WAY! GO BACK DOWN!
-          </button>
-        </div>
-      )}
-
       {/* 📦 CHEST STAGE */}
       {stageState === 'chest' && (
-        <div className="w-full h-full bg-amber-950/20 flex flex-col items-center justify-center">
-          <button onClick={onClickChest} className="text-9xl hover:scale-110 transition-transform cursor-pointer drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)] animate-wiggle">📦</button>
-          <p className="mt-4 bg-slate-800 text-white border-2 border-black font-black px-4 py-2 uppercase shadow-[2px_2px_0px_#000]">Click to Open</p>
+        <div className="w-full h-full flex items-center justify-center bg-slate-950 p-2">
+          <div 
+            className="relative border-4 border-black shadow-[4px_4px_0px_#000] bg-slate-800 overflow-hidden"
+            style={{
+              width: '800px', height: '600px',
+              backgroundImage: "url('/chest.png')",
+              backgroundSize: '100% 100%', backgroundPosition: 'center'
+            }}
+          >
+            {/* INVISIBLE CLICKABLE CHEST HOTSPOT */}
+            <button 
+              onClick={onClickChest} 
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-48 cursor-pointer outline-none"
+              aria-label="Click to open chest"
+            >
+              <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 bg-slate-800 text-white border-2 border-black font-black px-4 py-2 uppercase shadow-[2px_2px_0px_#000] animate-bounce whitespace-nowrap">
+                Click to Open
+              </span>
+            </button>
+          </div>
         </div>
       )}
     </div>
