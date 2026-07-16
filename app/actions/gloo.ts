@@ -2,9 +2,143 @@
 
 import { supabase } from '@/services/supabaseService';
 
+/**
+ * 🔐 Exchanges Client ID and Client Secret for a temporary OAuth2 Access Token.
+ * Matches your Python Kaggle credentials-auth flow.
+ */
+async function getGlooAccessToken(): Promise<string | null> {
+  const url = "https://platform.ai.gloo.com/oauth2/token";
+  
+  const clientId = process.env.GLOO_CLIENT_ID;
+  const clientSecret = process.env.GLOO_CLIENT_SECRET;
+
+  if (!clientId || !clientSecret) {
+    console.error("❌ Missing GLOO_CLIENT_ID or GLOO_CLIENT_SECRET in environment variables.");
+    return null;
+  }
+
+  // Encode credentials into an HTTP Basic Auth string
+  const credentialString = `${clientId}:${clientSecret}`;
+  const base64Creds = Buffer.from(credentialString).toString('base64');
+
+  const headers = {
+    "Authorization": `Basic ${base64Creds}`,
+    "Content-Type": "application/x-www-form-urlencoded"
+  };
+
+  const payload = new URLSearchParams({
+    "grant_type": "client_credentials",
+    "scope": "api/access"
+  });
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: headers,
+      body: payload,
+      // 10-second timeout
+      signal: AbortSignal.timeout(10000)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Auth API responded with ${response.status}: ${errorText}`);
+    }
+
+    const data = await response.json();
+    return data.access_token || null;
+  } catch (error) {
+    console.error(`❌ Gloo Authentication Failed:`, error);
+    return null;
+  }
+}
+
+/**
+ * 👼 Chat with Angel Gabriel
+ * Fetches OAuth2 Token, grabs profile context from Supabase, and queries Gloo AI with auto-routing.
+ */
+export async function askAngelGabriel(userId: string, question: string, currentStage: string) {
+  try {
+    // 1. Authenticate with Gloo first
+    const accessToken = await getGlooAccessToken();
+    if (!accessToken) {
+      throw new Error("Could not acquire Gloo access token.");
+    }
+
+    // 2. Fetch profile data from Supabase for personalization
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('grade_level, church_experience')
+      .eq('id', userId)
+      .single();
+
+    const grade = profile?.grade_level || 'an unknown grade';
+    const experience = profile?.church_experience || 'unknown';
+
+    // 3. Construct the customized system prompt
+    const systemPrompt = `
+      You are Angel Gabriel, a warm, encouraging, and witty heavenly messenger guiding a child in the game "Speak the Spirit".
+      The player is in ${grade} and their church experience level is: "${experience}".
+      
+      Current Stage context: ${currentStage} (The Crossroads, teaching "Pistis" / Faith).
+      The child has reached a chest and must break the lock by answering what "Pistis" means.
+      
+      Your goal is to coach them toward the correct answer: 
+      - Correct Concept: Faith/Pistis is "active loyalty, deep trust, and doing what the Gardener says", NOT "just knowing trivia facts".
+      
+      Coaching Style:
+      1. Explain this using a highly visual, age-appropriate analogy (like jumping on a trampoline or letting your feet leave the ground).
+      2. Keep it warm, engaging, and EXTREMELY BRIEF (strict maximum of 2 short sentences so it fits perfectly in a small chat box).
+      3. Never give away the exact answer letter directly; lead them to realize why active trust is the key.
+    `;
+
+    // 4. Call Gloo Chat Completion API
+    const url = "https://platform.ai.gloo.com/ai/v2/chat/completions";
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        "Authorization": `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        auto_routing: true, // Auto routing toggle active
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: question }
+        ],
+        temperature: 0.7
+      }),
+      signal: AbortSignal.timeout(15000) // 15-second completion timeout
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Gloo completion call responded with ${response.status}: ${errorText}`);
+    }
+
+    const data = await response.json();
+    return { reply: data.choices[0].message.content };
+
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('Error in askAngelGabriel:', message);
+    return { error: "I can't hear you over the static! Try asking me again!" };
+  }
+}
+
+/**
+ * 📖 Generate Personalized Bible Question
+ * Fetches OAuth2 Token, pulls profile details, and calls Gloo AI auto-routing.
+ */
 export async function getPersonalizedGlooQuestion(userId: string) {
   try {
-    // 1. Fetch profile data
+    // 1. Authenticate with Gloo first
+    const accessToken = await getGlooAccessToken();
+    if (!accessToken) {
+      throw new Error("Could not acquire Gloo access token.");
+    }
+
+    // 2. Fetch profile data
     const { data: profile, error } = await supabase
       .from('profiles')
       .select('grade_level, church_experience')
@@ -17,7 +151,7 @@ export async function getPersonalizedGlooQuestion(userId: string) {
 
     const { grade_level, church_experience } = profile;
 
-    // 2. Construct the system prompt for Gloo AI
+    // 3. Construct system prompt
     const systemPrompt = `
       You are a friendly, encouraging AI mentor for children. 
       The user is in ${grade_level || 'an unknown grade'} and their church experience is: "${church_experience || 'unknown'}".
@@ -31,24 +165,26 @@ export async function getPersonalizedGlooQuestion(userId: string) {
       Please provide only the question, without any introductory text.
     `;
 
-    // 3. Call Gloo AI API (Mock implementation as endpoint is provided as context)
-    const response = await fetch('https://api.gloo.ai/v1/chat/completions', {
+    // 4. Call Gloo Chat Completion API
+    const url = "https://platform.ai.gloo.com/ai/v2/chat/completions";
+    const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.GLOO_AI_API_KEY}`,
+        "Authorization": `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: 'gloo-ai-personalized',
+        auto_routing: true, // Recommended auto_routing option
         messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: 'Please generate a question for a verse about "Kindness".' }
+          { role: "system", content: systemPrompt },
+          { role: "user", content: 'Please generate a question for a verse about "Kindness".' }
         ],
       }),
     });
 
     if (!response.ok) {
-      throw new Error(`Gloo AI API responded with ${response.status}`);
+      const errorText = await response.text();
+      throw new Error(`Gloo completion call responded with ${response.status}: ${errorText}`);
     }
 
     const data = await response.json();
