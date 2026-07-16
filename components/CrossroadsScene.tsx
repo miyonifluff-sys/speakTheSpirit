@@ -14,7 +14,7 @@ interface DynamicQuestion {
   question: string;
   optionA: string;
   optionB: string;
-  optionC?: string; // Made optional with ?
+  optionC?: string;
   correctOption: 'A' | 'B' | 'C';
 }
 
@@ -44,13 +44,6 @@ export default function CrossroadsScene({ onComplete }: { onComplete?: () => voi
     ? "/characters/girlnobackground.png" 
     : "/characters/boynobackground.png";
 
-  // Metaphors used by Gabriel on consecutive failed attempts
-  const explanationMetaphors = [
-    "Pistis means active trust. It's like jumping on a trampoline: you don't just study it, you have to actually jump and let your feet leave the ground!",
-    "Think of faith like riding a bicycle: you can't learn it by reading a manual. You have to climb on, push off, and pedal with your feet!",
-    "Think of faith like using a bridge: you don't just stare at the map showing the bridge, you actually walk your physical weight across it!"
-  ];
-
   const handleMove = (direction: string) => {
     if (stageState === 'fork') {
       if (direction === 'LEFT' || direction === 'UP') {
@@ -67,6 +60,7 @@ export default function CrossroadsScene({ onComplete }: { onComplete?: () => voi
       setAngelChat("Phew, back at the crossroads. Try the other path!");
     }
   };
+
   // Keyboard Navigation Handler (Auto-focuses so arrow keys work immediately)
   useEffect(() => {
     // 1. Force focus onto the game window when the fork stage starts
@@ -123,98 +117,154 @@ export default function CrossroadsScene({ onComplete }: { onComplete?: () => voi
   }, [stageState]); // Keeps listeners completely synchronized with current stage
 
   // 📦 Pulls an explanation and generates a fresh adaptive question
-  const loadQuestionAndExplanation = async (remedialPrompt: string = "") => {
+  const loadQuestionAndExplanation = async (remedialPrompt: string = "", currentAttemptIndex: number) => {
     setIsThinking(true);
     
-    // Choose a unique metaphor based on how many times they have gotten it wrong
-    const currentMetaphor = explanationMetaphors[attempts % explanationMetaphors.length];
+    // 1. Define the rules for this specific scene's concept
+    const conceptName = "Faith";
+    const correctRule = "Active loyalty, deep trust, and doing what the Gardener says (taking action).";
+    const incorrectRule = "Just memorizing lists of facts and trivia about the Gardener, or passive head-knowledge without movement.";
+
+    const metaphors = [
+      "Pistis means active trust. It's like sitting on a chair: you don't just look at the chair and believe it holds weight, you have to actually sit down and let it support you!",
+      "Pistis is active trust. Think of walking through a door: you don't just stand outside looking at the handle, you have to turn it and step through to the other side!",
+      "Pistis is active trust. It's like gravity or the wind: you can't see the wind, but you step forward trusting it will carry your kite when you let go!"
+    ];
+    
+    const chosenMetaphor = metaphors[currentAttemptIndex % metaphors.length];
 
     const explanationInstructions = `
-      The player is learning about Faith.
-      Explain that the ancient Greek word for faith is "Pistis" (pronounced PEES-tis), which means active trust.
-      Explain this concept using this exact analogy: "${currentMetaphor}".
-      Keep it brief (maximum 2 sentences).
+      The player is learning about ${conceptName}. This is attempt number ${currentAttemptIndex + 1}.
+      IMPORTANT: Do not say "That's a great question" or acknowledge a user query.
+      
+      ${remedialPrompt ? `
+        REMEDIAL TEACHING FOCUS:
+        The child just answered a question incorrectly. ${remedialPrompt}
+        Explain why their choice wasn't true ${conceptName}, and pivot to why the correct choice was. Keep it extremely encouraging!
+      ` : `
+        INTRODUCTORY TEACHING FOCUS:
+        Explain that the ancient Greek word for faith is "Pistis" (pronounced PEES-tis), which means active trust.
+      `}
+      
+      Always close or reinforce your lesson using this EXACT analogy: "${chosenMetaphor}".
+      Keep the entire message warm, kind, and brief (maximum 3 sentences so it fits).
     `;
 
     try {
-      // 1. Get the dynamic teaching content
-      const angelResponse = await askAngelGabriel("user_123", "Explain faith & Pistis", explanationInstructions);
+      // 2. Get the dynamic teaching content
+      const angelResponse = await askAngelGabriel(
+        "user_123", 
+        remedialPrompt ? "Teach me from my mistake!" : `Introduce ${conceptName} and Pistis dynamically.`, 
+        explanationInstructions
+      );
       
       if (angelResponse.reply) {
         setChatLog(prev => [...prev, { sender: 'angel', text: angelResponse.reply }]);
+      } else {
+        setChatLog(prev => [...prev, { sender: 'angel', text: `Remember, faith is active trust. ${chosenMetaphor}` }]);
       }
 
-      // 2. Generate the unique multiple-choice question matching our current learning state
-      const quizResponse = await generateAdaptiveQuestion("user_123", "faith/active trust vs empty knowledge", remedialPrompt);
+      // 3. Generate the dynamic question using our SCENE CONCEPT RULES!
+      const quizResponse = await generateAdaptiveQuestion(
+        "user_123", 
+        conceptName,
+        correctRule,
+        incorrectRule,
+        remedialPrompt,
+        currentAttemptIndex
+      );
+      
       if (quizResponse.questionData) {
         setCurrentQuestion(quizResponse.questionData as DynamicQuestion);
       }
     } catch (err) {
       console.error(err);
+      setChatLog(prev => [...prev, { sender: 'angel', text: `Let's think about this: faith is active trust. ${chosenMetaphor}` }]);
     } finally {
       setIsThinking(false);
     }
   };
 
-  // Called when clicking the chest initially
   // Called when clicking the chest initially
   const handleChestClick = async () => {
     setStageState('lock-challenge');
     setExplanationAccepted(false);
     setAttempts(0);
     setAngelChat("Hold on, Traveler! To unlock this chest, we must first learn what Faith truly is. Let me teach you...");
-
-    // 🌟 1. Adjust instructions so the AI knows it is initiating the teaching, NOT replying to a query
-    const explanationInstructions = `
-      The player is learning about Faith. This is an introductory lesson. 
-      IMPORTANT: Do not say "That's a great question" or acknowledge any user question, because the user has not asked anything yet.
-      Explain that the ancient Greek word for faith is "Pistis" (pronounced PEES-tis), which means active trust.
-      Explain this concept using this exact analogy: "Pistis means active trust. It's like jumping on a trampoline: you don't just study it, you have to actually jump and let your feet leave the ground!"
-      Keep it brief (maximum 2 sentences).
-    `;
-
-    try {
-      setIsThinking(true);
-
-      // 🌟 2. We pass a blank string or direct directive as the "question" parameter
-      const angelResponse = await askAngelGabriel("user_123", "Introduce faith and Pistis dynamically.", explanationInstructions);
-      
-      if (angelResponse.reply) {
-        setChatLog(prev => [...prev, { sender: 'angel', text: angelResponse.reply }]);
-      }
-
-      // Get the dynamic multiple-choice question
-      const quizResponse = await generateAdaptiveQuestion("user_123", "faith/active trust vs empty knowledge", "");
-      if (quizResponse.questionData) {
-        setCurrentQuestion(quizResponse.questionData as DynamicQuestion);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsThinking(false);
-    }
+    await loadQuestionAndExplanation("", 0); // 👈 Explicitly start at 0
   };
 
   // Evaluates answer inputs
   const handleAnswerSubmit = async (selectedOption: 'A' | 'B' | 'C') => {
     if (!currentQuestion) return;
 
-    if (selectedOption === currentQuestion.correctOption) {
-      // SUCCESS! Lock breaks
-      setStageState('solved');
-      setAngelChat("YAY YAY YAY! You unlocked the truth! Click the green button on the right to continue your journey.");
-      addLog("Successfully broke the lock!", "system");
-    } else {
-      // WRONG ANSWER: Explain again using a new visual analogy and pull a fresh question
-      const previousWrongText = selectedOption === 'A' ? currentQuestion.optionA : currentQuestion.optionB;
-      setAttempts(prev => prev + 1);
-      setChallengeFeedback("Not quite! Let's try again with a different perspective.");
-      setExplanationAccepted(false); // Relock the UI until they accept the new explanation
-      setAngelChat("That wasn't quite it, Messenger. Let me explain faith in a slightly different way so you can try again...");
+    // Calculate the text of the option they selected
+    const chosenText = selectedOption === 'A' 
+      ? currentQuestion.optionA 
+      : (selectedOption === 'B' ? currentQuestion.optionB : currentQuestion.optionC);
 
-      const remedialPrompt = `The player chose the wrong option: "${previousWrongText}". They are struggling to separate active obedience from simple static knowledge. Explain the difference clearly.`;
+    if (selectedOption === currentQuestion.correctOption) {
+      // 🌟 SUCCESS! 
+      setStageState('solved');
+      addLog("Successfully broke the lock!", "system");
+      setIsThinking(true);
+
+      // Tell Angel Gabriel to celebrate and solidify their understanding
+      const successPrompt = `
+        The player answered the question: "${currentQuestion.question}" correctly!
+        They chose the correct answer: "${chosenText}".
+        
+        Write a very short, highly enthusiastic celebration (1-2 sentences).
+        Briefly explain WHY this answer represents true faith (Pistis/active trust) and congratulate them on breaking the lock.
+        Keep it warm, fun, and extremely brief so it fits the box!
+      `;
+
+      try {
+        const res = await askAngelGabriel(
+          "user_123", 
+          "Explain why my correct answer was right!", 
+          successPrompt
+        );
+        setIsThinking(false);
+        if (res.reply) {
+          setAngelChat(res.reply);
+          setChatLog(prev => [...prev, { sender: 'angel', text: res.reply }]);
+        } else {
+          // Fallback celebration
+          const fallbackMsg = `Spot on! You chose: "${chosenText}". That is true faith—not just looking at a path, but actually stepping out on it! Let's head to the next trial!`;
+          setAngelChat(fallbackMsg);
+          setChatLog(prev => [...prev, { sender: 'angel', text: fallbackMsg }]);
+        }
+      } catch (err) {
+        setIsThinking(false);
+        const fallbackMsg = `Spot on! You chose: "${chosenText}". That is true faith—not just looking at a path, but actually stepping out on it! Let's head to the next trial!`;
+        setAngelChat(fallbackMsg);
+        setChatLog(prev => [...prev, { sender: 'angel', text: fallbackMsg }]);
+      }
+
+    } else {
+      // WRONG ANSWER: Calculate what they chose vs. what the correct answer was
+      const correctOptionLetter = currentQuestion.correctOption;
+      const correctText = correctOptionLetter === 'A' 
+        ? currentQuestion.optionA 
+        : (correctOptionLetter === 'B' ? currentQuestion.optionB : currentQuestion.optionC);
       
-      await loadQuestionAndExplanation(remedialPrompt);
+      const nextAttempt = attempts + 1;
+      setAttempts(nextAttempt);
+      
+      setChallengeFeedback("Not quite! Let's read Angel Gabriel's correction and try a new challenge!");
+      setExplanationAccepted(false); // Relock the UI until they accept the new explanation
+      setAngelChat("That wasn't quite it, Messenger. Let me explain why that choice didn't hit the mark...");
+
+      // Send exact wrong choice vs. correct choice to Gloo so it can explain the difference
+      const remedialPrompt = `
+        The question asked was: "${currentQuestion.question}".
+        The child chose: "${chosenText}" (which is incorrect because it is either passive head-knowledge or empty action).
+        The correct concept was: "${correctText}" (representing active trust and loyalty).
+        Explain to the child why their choice is not the fullness of faith, and why active trust is.
+      `;
+      
+      await loadQuestionAndExplanation(remedialPrompt, nextAttempt);
     }
   };
 

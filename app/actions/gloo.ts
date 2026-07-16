@@ -196,17 +196,16 @@ export async function getPersonalizedGlooQuestion(userId: string) {
 }
 
 /**
- * 🎲 Generates a highly personalized multiple-choice question.
- * Automatically gives younger kids (TK-3rd) 2 options, and older kids (4th-12th) 3 options.
- */
-/**
- * 🎲 Generates a highly personalized multiple-choice question.
- * Automatically gives younger kids (TK-3rd) 2 options, and older kids (4th-12th) 3 options.
+ * 🎲 Generates a highly personalized multiple-choice question for any concept in the game.
+ * Accepts dynamic concept rules so it can be reused across different levels/scenes.
  */
 export async function generateAdaptiveQuestion(
   userId: string, 
-  concept: string, 
-  remedialContext: string = ""
+  conceptName: string,       // e.g., "Faith" or "Hope" or "Love"
+  correctConceptRule: string, // e.g., "Active loyalty, deep trust, and doing what the Gardener says"
+  incorrectTrapRule: string,  // e.g., "Just memorizing lists of facts and trivia, or passive head-knowledge"
+  remedialContext: string = "",
+  attemptCount: number = 0
 ) {
   try {
     const accessToken = await getGlooAccessToken();
@@ -221,35 +220,42 @@ export async function generateAdaptiveQuestion(
       .eq('id', userId)
       .single();
 
-    const grade = profile?.grade_level || '4th'; // Default to 4th grade if not set
+    const grade = profile?.grade_level || '4th';
     const experience = profile?.church_experience || 'unknown';
 
-    // 2. Determine difficulty parameters based on grade level
-    // We check if the grade matches TK, Kindergarten, 1st, 2nd, or 3rd.
     const isYoungerKid = /^(TK|K|kindergarten|1st|2nd|3rd)$/i.test(grade.trim());
     const optionCount = isYoungerKid ? 2 : 3;
+
+    // Rotate through 3 distinct question formats based on attempts
+    const categories = [
+      "CONCEPTUAL METAPHOR: Focus on definitions using concrete everyday analogies (like chairs, bridges, backpacks, maps, or wind).",
+      "REAL-LIFE APPLICATION: Put the kid in a realistic scenario where they must choose the correct action over fear, passivity, or doing nothing.",
+      "IN-GAME GARDEN LORE: Frame it around planting a seed, navigating a wilderness trial, trusting the Gardener's physical maps, or dealing with weeds."
+    ];
+    const currentCategory = categories[attemptCount % categories.length];
 
     const systemPrompt = `
       You are an expert children's game designer and curriculum writer.
       Generate an age-appropriate multiple-choice question for a child in ${grade} with "${experience}" church experience.
       
-      Topic: "${concept}" (specifically faith / active trust / Pistis).
+      Core Topic: "${conceptName}"
       
-      ${remedialContext ? `IMPORTANT: The child got the last question wrong. Remedial context: ${remedialContext}. Choose a slightly different angle or simpler wording.` : ""}
+      What the CORRECT option must represent:
+      - "${correctConceptRule}"
+      
+      What the INCORRECT option(s) must represent:
+      - "${incorrectTrapRule}"
+      ${!isYoungerKid ? `- A second incorrect distractor showing passivity, fear, or waiting for a magic trick without participation.` : ''}
+
+      Question Category Style: ${currentCategory}
+      
+      ${remedialContext ? `IMPORTANT: The child got the last question wrong. Remedial context: ${remedialContext}. Adjust the scenario to address their misunderstanding.` : ""}
       
       Requirements:
       1. You must generate exactly ${optionCount} options: Option A, Option B${optionCount === 3 ? ', and Option C' : ''}.
-      2. Keep the vocabulary extremely simple and friendly for a ${grade} student.
-      3. One option MUST represent active loyalty, deep trust, or doing what is commanded (Correct).
-      ${isYoungerKid ? `
-      4. For this younger age group, keep options short. The incorrect option (Option A or B) should represent passive knowledge/empty facts.
-      ` : `
-      4. One option MUST represent passive knowledge/empty facts (Incorrect).
-      5. One option MUST represent a distractor, like avoiding action or waiting for a magic trick without participation (Incorrect).
-      `}
-      6. 🌟 CRITICAL: Randomly assign the correct concept to EITHER Option A, Option B${optionCount === 3 ? ', or Option C' : ''}. Mix it up completely!
-      7. Do NOT mention the exact Greek word "Pistis" in the question or options to keep cognitive load low.
-      8. You MUST respond with a strict, valid JSON object and nothing else. No markdown formatting, no code blocks, just raw JSON.
+      2. 🌟 CRITICAL: Randomly assign the correct concept to EITHER Option A, Option B${optionCount === 3 ? ', or Option C' : ''}. Do not always make Option B the correct answer!
+      3. Keep the vocabulary extremely simple and friendly for a ${grade} student.
+      4. Respond with a strict, valid JSON object and nothing else. No markdown formatting, no code blocks, just raw JSON.
       
       Expected JSON Format:
       {
@@ -285,8 +291,6 @@ export async function generateAdaptiveQuestion(
 
     const data = await response.json();
     const rawText = data.choices[0].message.content.trim();
-    
-    // Strip markdown formatting if any
     const cleanJsonText = rawText.replace(/^```json\s*|```$/g, '');
     const parsedQuestion = JSON.parse(cleanJsonText);
 
@@ -296,13 +300,12 @@ export async function generateAdaptiveQuestion(
     const message = error instanceof Error ? error.message : String(error);
     console.error('Error in generateAdaptiveQuestion:', message);
     
-    // Solid fallback matching standard 3-option
+    // Simple, clean fallback
     return { 
       questionData: {
-        question: "What does it mean to have real faith in the Gardener?",
-        optionA: "Just memorizing lists of facts and trivia about His seeds.",
-        optionB: "Actively trusting Him enough to step out on the dirt trail and plant them.",
-        optionC: "Waiting at the crossroads and wishing they would plant themselves.",
+        question: `What is the true meaning of ${conceptName}?`,
+        optionA: `Just thinking about ${conceptName} and memorizing facts about it.`,
+        optionB: `Taking active steps to live out ${conceptName} in real life.`,
         correctOption: "B"
       }
     };
