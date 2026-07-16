@@ -2,10 +2,10 @@
 
 import React, { useState } from 'react';
 import { useGame } from '../context/GameContext';
-import CrossroadsScene from './CrossroadsScene';
+import CrossroadsScene from './quests/Crossroads/CrossroadsScene';
 // We will import the other scenes later as we build them!
-// import HungerTrialScene from './HungerTrialScene';
-// import RushingWatersScene from './RushingWatersScene';
+// import HungerTrialScene from './quests/HungerTrial/HungerTrialScene';
+// import RushingWatersScene from './quests/RushingWaters/RushingWatersScene';
 
 export default function QuestRiddle() {
   const { setCurrentScreen, setFeedback } = useGame();
