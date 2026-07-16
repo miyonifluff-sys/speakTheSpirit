@@ -55,17 +55,20 @@ async function getGlooAccessToken(): Promise<string | null> {
 
 /**
  * 👼 Chat with Angel Gabriel
- * Fetches OAuth2 Token, grabs profile context from Supabase, and queries Gloo AI with auto-routing.
+ * Securely logs in, grabs profile info, and sends a highly contextualized system prompt to Gloo AI.
  */
-export async function askAngelGabriel(userId: string, question: string, currentStage: string) {
+export async function askAngelGabriel(
+  userId: string, 
+  question: string, 
+  systemInstructions: string // 🌟 Accept dynamic system instructions from the component!
+) {
   try {
-    // 1. Authenticate with Gloo first
     const accessToken = await getGlooAccessToken();
     if (!accessToken) {
       throw new Error("Could not acquire Gloo access token.");
     }
 
-    // 2. Fetch profile data from Supabase for personalization
+    // Fetch profile data for kid-friendly personalization
     const { data: profile } = await supabase
       .from('profiles')
       .select('grade_level, church_experience')
@@ -75,24 +78,19 @@ export async function askAngelGabriel(userId: string, question: string, currentS
     const grade = profile?.grade_level || 'an unknown grade';
     const experience = profile?.church_experience || 'unknown';
 
-    // 3. Construct the customized system prompt
-    const systemPrompt = `
+    // Combine player profile with scene-specific instructions
+    const fullyFormedPrompt = `
       You are Angel Gabriel, a warm, encouraging, and witty heavenly messenger guiding a child in the game "Speak the Spirit".
       The player is in ${grade} and their church experience level is: "${experience}".
       
-      Current Stage context: ${currentStage} (The Crossroads, teaching "Pistis" / Faith).
-      The child has reached a chest and must break the lock by answering what "Pistis" means.
+      ${systemInstructions}
       
-      Your goal is to coach them toward the correct answer: 
-      - Correct Concept: Faith/Pistis is "active loyalty, deep trust, and doing what the Gardener says", NOT "just knowing trivia facts".
-      
-      Coaching Style:
-      1. Explain this using a highly visual, age-appropriate analogy (like jumping on a trampoline or letting your feet leave the ground).
-      2. Keep it warm, engaging, and EXTREMELY BRIEF (strict maximum of 2 short sentences so it fits perfectly in a small chat box).
-      3. Never give away the exact answer letter directly; lead them to realize why active trust is the key.
+      General Guidelines:
+      1. Keep your answers EXTREMELY BRIEF (strict maximum of 2 sentences so it fits in a small chat box).
+      2. Keep it encouraging and age-appropriate.
+      3. Never give away the exact answer letter directly.
     `;
 
-    // 4. Call Gloo Chat Completion API
     const url = "https://platform.ai.gloo.com/ai/v2/chat/completions";
     const response = await fetch(url, {
       method: 'POST',
@@ -101,14 +99,14 @@ export async function askAngelGabriel(userId: string, question: string, currentS
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        auto_routing: true, // Auto routing toggle active
+        auto_routing: true,
         messages: [
-          { role: "system", content: systemPrompt },
+          { role: "system", content: fullyFormedPrompt },
           { role: "user", content: question }
         ],
         temperature: 0.7
       }),
-      signal: AbortSignal.timeout(15000) // 15-second completion timeout
+      signal: AbortSignal.timeout(15000)
     });
 
     if (!response.ok) {
@@ -194,5 +192,119 @@ export async function getPersonalizedGlooQuestion(userId: string) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('Error in getPersonalizedGlooQuestion:', message);
     return { error: message };
+  }
+}
+
+/**
+ * 🎲 Generates a highly personalized multiple-choice question.
+ * Automatically gives younger kids (TK-3rd) 2 options, and older kids (4th-12th) 3 options.
+ */
+/**
+ * 🎲 Generates a highly personalized multiple-choice question.
+ * Automatically gives younger kids (TK-3rd) 2 options, and older kids (4th-12th) 3 options.
+ */
+export async function generateAdaptiveQuestion(
+  userId: string, 
+  concept: string, 
+  remedialContext: string = ""
+) {
+  try {
+    const accessToken = await getGlooAccessToken();
+    if (!accessToken) {
+      throw new Error("Could not acquire Gloo access token.");
+    }
+
+    // 1. Fetch child's profile details
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('grade_level, church_experience')
+      .eq('id', userId)
+      .single();
+
+    const grade = profile?.grade_level || '4th'; // Default to 4th grade if not set
+    const experience = profile?.church_experience || 'unknown';
+
+    // 2. Determine difficulty parameters based on grade level
+    // We check if the grade matches TK, Kindergarten, 1st, 2nd, or 3rd.
+    const isYoungerKid = /^(TK|K|kindergarten|1st|2nd|3rd)$/i.test(grade.trim());
+    const optionCount = isYoungerKid ? 2 : 3;
+
+    const systemPrompt = `
+      You are an expert children's game designer and curriculum writer.
+      Generate an age-appropriate multiple-choice question for a child in ${grade} with "${experience}" church experience.
+      
+      Topic: "${concept}" (specifically faith / active trust / Pistis).
+      
+      ${remedialContext ? `IMPORTANT: The child got the last question wrong. Remedial context: ${remedialContext}. Choose a slightly different angle or simpler wording.` : ""}
+      
+      Requirements:
+      1. You must generate exactly ${optionCount} options: Option A, Option B${optionCount === 3 ? ', and Option C' : ''}.
+      2. Keep the vocabulary extremely simple and friendly for a ${grade} student.
+      3. One option MUST represent active loyalty, deep trust, or doing what is commanded (Correct).
+      ${isYoungerKid ? `
+      4. For this younger age group, keep options short. The incorrect option (Option A or B) should represent passive knowledge/empty facts.
+      ` : `
+      4. One option MUST represent passive knowledge/empty facts (Incorrect).
+      5. One option MUST represent a distractor, like avoiding action or waiting for a magic trick without participation (Incorrect).
+      `}
+      6. 🌟 CRITICAL: Randomly assign the correct concept to EITHER Option A, Option B${optionCount === 3 ? ', or Option C' : ''}. Mix it up completely!
+      7. Do NOT mention the exact Greek word "Pistis" in the question or options to keep cognitive load low.
+      8. You MUST respond with a strict, valid JSON object and nothing else. No markdown formatting, no code blocks, just raw JSON.
+      
+      Expected JSON Format:
+      {
+        "question": "The question text here?",
+        "optionA": "The first choice text.",
+        "optionB": "The second choice text.",
+        ${optionCount === 3 ? '"optionC": "The third choice text.",' : ''}
+        "correctOption": "A" or "B"${optionCount === 3 ? ' or "C"' : ''} (Set this dynamically to whichever letter contains the correct, active concept!)
+      }
+    `;
+
+    const url = "https://platform.ai.gloo.com/ai/v2/chat/completions";
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        "Authorization": `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        auto_routing: true,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: "Generate the JSON question payload now." }
+        ],
+        temperature: 0.8
+      }),
+      signal: AbortSignal.timeout(15000)
+    });
+
+    if (!response.ok) {
+      throw new Error(`Gloo completion call responded with ${response.status}`);
+    }
+
+    const data = await response.json();
+    const rawText = data.choices[0].message.content.trim();
+    
+    // Strip markdown formatting if any
+    const cleanJsonText = rawText.replace(/^```json\s*|```$/g, '');
+    const parsedQuestion = JSON.parse(cleanJsonText);
+
+    return { questionData: parsedQuestion };
+
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('Error in generateAdaptiveQuestion:', message);
+    
+    // Solid fallback matching standard 3-option
+    return { 
+      questionData: {
+        question: "What does it mean to have real faith in the Gardener?",
+        optionA: "Just memorizing lists of facts and trivia about His seeds.",
+        optionB: "Actively trusting Him enough to step out on the dirt trail and plant them.",
+        optionC: "Waiting at the crossroads and wishing they would plant themselves.",
+        correctOption: "B"
+      }
+    };
   }
 }

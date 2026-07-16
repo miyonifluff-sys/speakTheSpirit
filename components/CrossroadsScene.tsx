@@ -3,35 +3,53 @@
 import React, { useState, useEffect } from 'react';
 import { useGame } from '../context/GameContext';
 import { addLog } from '../utils/gameEvents';
-import { askAngelGabriel } from '../app/actions/gloo';
+import { askAngelGabriel, generateAdaptiveQuestion } from '../app/actions/gloo';
 
 interface ChatMessage {
   sender: 'you' | 'angel';
   text: string;
 }
 
+interface DynamicQuestion {
+  question: string;
+  optionA: string;
+  optionB: string;
+  optionC?: string; // Made optional with ?
+  correctOption: 'A' | 'B' | 'C';
+}
+
 export default function CrossroadsScene({ onComplete }: { onComplete?: () => void }) {
   const { setCurrentScreen, setQuestObjectClicked } = useGame();
 
-  // 'fork' | 'ghosts' | 'x-marks' | 'chest' | 'lock-challenge' | 'solved'
-  const [stageState, setStageState] = useState('fork');
-  
+  // 'riddle-intro' | 'fork' | 'ghosts' | 'x-marks' | 'chest' | 'lock-challenge' | 'solved'
+  const [stageState, setStageState] = useState('riddle-intro');
+  const [explanationAccepted, setExplanationAccepted] = useState(false);
+
+  // Dynamic Question States
+  const [currentQuestion, setCurrentQuestion] = useState<DynamicQuestion | null>(null);
+  const [attempts, setAttempts] = useState(0);
+
   // Right Console States
-  const [angelChat, setAngelChat] = useState("Traveler, choose your path using the D-Pad or your Keyboard Arrow Keys. The paved road looks easy, but what does the riddle say?");
+  const [angelChat, setAngelChat] = useState("Greetings, Traveler! Before you take a single step, you must decode the riddle above. Click the scroll on the left to begin!");
   const [askInput, setAskInput] = useState("");
-  
-  // Structured Chat log to separate styling
   const [chatLog, setChatLog] = useState<ChatMessage[]>([]);
   const [isThinking, setIsThinking] = useState(false);
 
-  // Challenge Specific State
+  // Challenge Feedback (e.g. "Wrong answer!")
   const [challengeFeedback, setChallengeFeedback] = useState("");
 
-  // Character Sprite Selection (Hardcoded 'girl' for demo)
+  // Character Selection (Hardcoded 'girl' for demo)
   const [selectedGender] = useState<'girl' | 'boy'>('girl');
   const characterPath = selectedGender === 'girl' 
     ? "/characters/girlnobackground.png" 
     : "/characters/boynobackground.png";
+
+  // Metaphors used by Gabriel on consecutive failed attempts
+  const explanationMetaphors = [
+    "Pistis means active trust. It's like jumping on a trampoline: you don't just study it, you have to actually jump and let your feet leave the ground!",
+    "Think of faith like riding a bicycle: you can't learn it by reading a manual. You have to climb on, push off, and pedal with your feet!",
+    "Think of faith like using a bridge: you don't just stare at the map showing the bridge, you actually walk your physical weight across it!"
+  ];
 
   const handleMove = (direction: string) => {
     if (stageState === 'fork') {
@@ -49,14 +67,23 @@ export default function CrossroadsScene({ onComplete }: { onComplete?: () => voi
       setAngelChat("Phew, back at the crossroads. Try the other path!");
     }
   };
-
-  // Keyboard Navigation Handler
+  // Keyboard Navigation Handler (Auto-focuses so arrow keys work immediately)
   useEffect(() => {
+    // 1. Force focus onto the game window when the fork stage starts
+    if (stageState === 'fork') {
+      window.focus();
+    }
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Disable moving when typing inside inputs
+      // 🚫 Disable moving when typing inside input boxes
       const activeEl = document.activeElement;
       if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
         return; 
+      }
+
+      // 🚫 Don't allow movement if we are in the intro, challenge, or solved screens
+      if (stageState !== 'fork' && stageState !== 'ghosts') {
+        return;
       }
 
       switch (e.key) {
@@ -93,37 +120,133 @@ export default function CrossroadsScene({ onComplete }: { onComplete?: () => voi
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [stageState]);
+  }, [stageState]); // Keeps listeners completely synchronized with current stage
+
+  // 📦 Pulls an explanation and generates a fresh adaptive question
+  const loadQuestionAndExplanation = async (remedialPrompt: string = "") => {
+    setIsThinking(true);
+    
+    // Choose a unique metaphor based on how many times they have gotten it wrong
+    const currentMetaphor = explanationMetaphors[attempts % explanationMetaphors.length];
+
+    const explanationInstructions = `
+      The player is learning about Faith.
+      Explain that the ancient Greek word for faith is "Pistis" (pronounced PEES-tis), which means active trust.
+      Explain this concept using this exact analogy: "${currentMetaphor}".
+      Keep it brief (maximum 2 sentences).
+    `;
+
+    try {
+      // 1. Get the dynamic teaching content
+      const angelResponse = await askAngelGabriel("user_123", "Explain faith & Pistis", explanationInstructions);
+      
+      if (angelResponse.reply) {
+        setChatLog(prev => [...prev, { sender: 'angel', text: angelResponse.reply }]);
+      }
+
+      // 2. Generate the unique multiple-choice question matching our current learning state
+      const quizResponse = await generateAdaptiveQuestion("user_123", "faith/active trust vs empty knowledge", remedialPrompt);
+      if (quizResponse.questionData) {
+        setCurrentQuestion(quizResponse.questionData as DynamicQuestion);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsThinking(false);
+    }
+  };
+
+  // Called when clicking the chest initially
+  // Called when clicking the chest initially
+  const handleChestClick = async () => {
+    setStageState('lock-challenge');
+    setExplanationAccepted(false);
+    setAttempts(0);
+    setAngelChat("Hold on, Traveler! To unlock this chest, we must first learn what Faith truly is. Let me teach you...");
+
+    // 🌟 1. Adjust instructions so the AI knows it is initiating the teaching, NOT replying to a query
+    const explanationInstructions = `
+      The player is learning about Faith. This is an introductory lesson. 
+      IMPORTANT: Do not say "That's a great question" or acknowledge any user question, because the user has not asked anything yet.
+      Explain that the ancient Greek word for faith is "Pistis" (pronounced PEES-tis), which means active trust.
+      Explain this concept using this exact analogy: "Pistis means active trust. It's like jumping on a trampoline: you don't just study it, you have to actually jump and let your feet leave the ground!"
+      Keep it brief (maximum 2 sentences).
+    `;
+
+    try {
+      setIsThinking(true);
+
+      // 🌟 2. We pass a blank string or direct directive as the "question" parameter
+      const angelResponse = await askAngelGabriel("user_123", "Introduce faith and Pistis dynamically.", explanationInstructions);
+      
+      if (angelResponse.reply) {
+        setChatLog(prev => [...prev, { sender: 'angel', text: angelResponse.reply }]);
+      }
+
+      // Get the dynamic multiple-choice question
+      const quizResponse = await generateAdaptiveQuestion("user_123", "faith/active trust vs empty knowledge", "");
+      if (quizResponse.questionData) {
+        setCurrentQuestion(quizResponse.questionData as DynamicQuestion);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsThinking(false);
+    }
+  };
+
+  // Evaluates answer inputs
+  const handleAnswerSubmit = async (selectedOption: 'A' | 'B' | 'C') => {
+    if (!currentQuestion) return;
+
+    if (selectedOption === currentQuestion.correctOption) {
+      // SUCCESS! Lock breaks
+      setStageState('solved');
+      setAngelChat("YAY YAY YAY! You unlocked the truth! Click the green button on the right to continue your journey.");
+      addLog("Successfully broke the lock!", "system");
+    } else {
+      // WRONG ANSWER: Explain again using a new visual analogy and pull a fresh question
+      const previousWrongText = selectedOption === 'A' ? currentQuestion.optionA : currentQuestion.optionB;
+      setAttempts(prev => prev + 1);
+      setChallengeFeedback("Not quite! Let's try again with a different perspective.");
+      setExplanationAccepted(false); // Relock the UI until they accept the new explanation
+      setAngelChat("That wasn't quite it, Messenger. Let me explain faith in a slightly different way so you can try again...");
+
+      const remedialPrompt = `The player chose the wrong option: "${previousWrongText}". They are struggling to separate active obedience from simple static knowledge. Explain the difference clearly.`;
+      
+      await loadQuestionAndExplanation(remedialPrompt);
+    }
+  };
 
   const handleAskGloo = async (e: React.FormEvent) => {
     e.preventDefault();
-    const currentQuestion = askInput.trim();
-    if (!currentQuestion) return;
+    const currentQuestionText = askInput.trim();
+    if (!currentQuestionText) return;
 
-    // Reset input text immediately
     setAskInput("");
-    
-    // 1. Add user's message to chat (appears on right side in blue)
-    setChatLog(prev => [...prev, { sender: 'you', text: currentQuestion }]);
-    
-    // 2. Fire typing/thinking state
+    setChatLog(prev => [...prev, { sender: 'you', text: currentQuestionText }]);
     setIsThinking(true);
 
+    const chatContextPrompt = `
+      Current Stage: The Crossroads (Faith/Pistis).
+      The child is trying to answer a dynamic multiple choice question.
+      Active question on screen: "${currentQuestion?.question}"
+      Correct answer concept: ${currentQuestion?.correctOption === 'A' ? currentQuestion?.optionA : currentQuestion?.optionB}.
+      Guide them towards the active option without stating the letters 'A' or 'B'.
+    `;
+
     try {
-      // Call the Server Action securely
-      const res = await askAngelGabriel("user_123", currentQuestion, stageState);
-      
+      const res = await askAngelGabriel("user_123", currentQuestionText, chatContextPrompt);
       setIsThinking(false);
 
       if (res.error) {
-        setChatLog(prev => [...prev, { sender: 'angel', text: res.error || "Static is too loud right now!" }]);
+        setChatLog(prev => [...prev, { sender: 'angel', text: res.error }]);
       } else if (res.reply) {
-        // 3. Add Angel's answer (appears on left side in white)
         setChatLog(prev => [...prev, { sender: 'angel', text: res.reply }]);
       }
     } catch (err) {
       setIsThinking(false);
-      setChatLog(prev => [...prev, { sender: 'angel', text: "The static is too loud right now! Can you try asking me that one more time?" }]);
+      setChatLog(prev => [...prev, { sender: 'angel', text: "The static is too loud right now! Ask me again!" }]);
     }
   };
 
@@ -144,7 +267,7 @@ export default function CrossroadsScene({ onComplete }: { onComplete?: () => voi
           {stageState === 'lock-challenge' && (
             <div className="flex items-center gap-2 bg-slate-900 px-3 py-1 border border-black rounded">
               <span className="text-xl">🔒</span>
-              <span className="text-[10px] font-black uppercase text-amber-400">Lock Puzzle Active</span>
+              <span className="text-[10px] font-black uppercase text-amber-400">Lock Puzzle</span>
             </div>
           )}
         </div>
@@ -152,6 +275,27 @@ export default function CrossroadsScene({ onComplete }: { onComplete?: () => voi
         {/* SCENE RENDERING AREA */}
         <div className="flex-1 w-full relative overflow-hidden flex items-center justify-center">
           
+          {/* STEP 1: RIDDLE INTRO (Movement locked) */}
+          {stageState === 'riddle-intro' && (
+            <div className="w-full max-w-md bg-amber-50 text-black border-4 border-black p-6 rounded-xl shadow-[6px_6px_0px_#000] animate-bounce-short text-center relative">
+              <span className="text-5xl absolute -top-8 left-1/2 -translate-x-1/2 bg-yellow-400 p-2 rounded-full border-4 border-black shadow-[2px_2px_0px_#000]">📜</span>
+              <h2 className="text-xl font-black uppercase text-amber-900 mt-4 mb-3">Ancient Message Decoded!</h2>
+              <div className="bg-white border-2 border-black p-4 rounded-lg italic font-bold text-sm text-slate-800 leading-relaxed mb-6">
+                "Where cobblestones end and hidden trails start,<br />
+                Choose the path less traveled with all of your heart."
+              </div>
+              <button 
+                onClick={() => {
+                  setStageState('fork');
+                  setAngelChat("Awesome! Now use your arrow keys or the D-Pad to step off the cobblestones and choose the correct trail!");
+                }}
+                className="w-full bg-green-500 hover:bg-green-400 text-white font-black py-3 px-6 rounded-lg border-2 border-black shadow-[4px_4px_0px_#000] transition-transform active:translate-y-1 uppercase tracking-wider text-sm"
+              >
+                Begin Quest ➔
+              </button>
+            </div>
+          )}
+
           {stageState === 'fork' && (
             <div className="relative w-full h-full flex">
               <div className="w-1/2 h-full bg-slate-800 border-r-4 border-black border-dashed flex items-center justify-center">
@@ -216,10 +360,7 @@ export default function CrossroadsScene({ onComplete }: { onComplete?: () => voi
           {stageState === 'chest' && (
             <div className="w-full h-full bg-amber-950/20 flex flex-col items-center justify-center">
               <button 
-                onClick={() => {
-                  setStageState('lock-challenge');
-                  setAngelChat("To open this chest, you must break the lock! Answer the question on the left. If you need help, ask me a question in our chat!");
-                }}
+                onClick={handleChestClick}
                 className="text-9xl hover:scale-110 transition-transform cursor-pointer drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)] animate-wiggle"
               >
                 📦
@@ -230,47 +371,86 @@ export default function CrossroadsScene({ onComplete }: { onComplete?: () => voi
             </div>
           )}
 
-          {/* INLINE LEFT-SIDE LOCK CHALLENGE */}
-          {stageState === 'lock-challenge' && (
+          {/* 🔒 ADAPTIVE LEFT-SIDE LOCK CHALLENGE */}
+          {stageState === 'lock-challenge' && currentQuestion && (
             <div className="w-full h-full flex flex-col justify-between animate-fade-in bg-slate-900 overflow-y-auto">
+              
               <div className="border-b-2 border-slate-700 pb-2 mb-4 shrink-0">
                 <h2 className="text-lg font-black uppercase text-amber-400 flex items-center gap-2">
-                  <span>🔒</span> Break the Lock!
+                  <span>🔒</span> Break the Lock! {attempts > 0 && <span className="text-xs text-red-400 font-normal">(Attempt #{attempts + 1})</span>}
                 </h2>
-                <p className="text-xs text-slate-400">Answer correctly to unlock the first Truth Scroll.</p>
+                <p className="text-xs text-slate-400">Explain Faith correctly to unlock the first Truth Scroll.</p>
               </div>
 
-              <div className="flex-1 flex flex-col justify-center gap-4">
-                <p className="font-bold text-base text-slate-100 leading-relaxed">
-                  What is the true meaning of the ancient Greek word <span className="bg-yellow-400 text-black px-1.5 py-0.5 rounded font-black font-mono">Pistis</span> (Faith)?
-                </p>
+              {/* Devotional Locking Overlay */}
+              <div className="flex-1 flex flex-col justify-center gap-4 relative">
+                
+                {/* Visual State: Unlocked vs Grayed Out */}
+                <div className={`transition-all duration-300 ${explanationAccepted ? 'opacity-100' : 'opacity-30 pointer-events-none'}`}>
+                  
+                  {/* Dynamic Question Text */}
+                  <p className="font-bold text-base text-slate-100 leading-relaxed mb-4">
+                    {currentQuestion.question}
+                  </p>
 
-                {challengeFeedback && (
-                  <div className="bg-red-950/80 border-2 border-red-500 text-red-200 font-bold p-2 text-xs rounded">
-                    ⚠️ {challengeFeedback}
+                  {challengeFeedback && (
+                    <div className="bg-red-950/80 border-2 border-red-500 text-red-200 font-bold p-2 text-xs rounded mb-3">
+                      ⚠️ {challengeFeedback}
+                    </div>
+                  )}
+
+                  {/* Dynamic Options */}
+                  <div className="space-y-3">
+                    <button 
+                      onClick={() => handleAnswerSubmit('A')}
+                      className="w-full text-left bg-slate-800 hover:bg-slate-700 text-white border-2 border-black p-3 font-bold text-xs shadow-[2px_2px_0px_#000] transition-colors rounded animate-fade-in"
+                    >
+                      A) {currentQuestion.optionA}
+                    </button>
+                    <button 
+                      onClick={() => handleAnswerSubmit('B')}
+                      className="w-full text-left bg-slate-800 hover:bg-slate-700 text-white border-2 border-black p-3 font-bold text-xs shadow-[2px_2px_0px_#000] transition-colors rounded animate-fade-in"
+                    >
+                      B) {currentQuestion.optionB}
+                    </button>
+                    
+                    {/* Only render Option C if it exists in the question data */}
+                    {currentQuestion.optionC && (
+                      <button 
+                        onClick={() => handleAnswerSubmit('C')}
+                        className="w-full text-left bg-slate-800 hover:bg-slate-700 text-white border-2 border-black p-3 font-bold text-xs shadow-[2px_2px_0px_#000] transition-colors rounded animate-fade-in"
+                      >
+                        C) {currentQuestion.optionC}
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Overlying Lesson Lock Card (Hides/grays out the question until okayed) */}
+                {!explanationAccepted && (
+                  <div className="absolute inset-0 bg-slate-900/95 flex flex-col items-center justify-center p-4 text-center z-10 rounded">
+                    <div className="bg-slate-800 border-2 border-black p-5 rounded-lg shadow-[4px_4px_0px_#000] max-w-sm">
+                      <span className="text-4xl animate-bounce">👼</span>
+                      <h3 className="font-black uppercase text-amber-400 text-sm mt-2 mb-1">
+                        {attempts > 0 ? "Let's try another angle!" : "Divine Wisdom Required"}
+                      </h3>
+                      <p className="text-xs text-slate-300 leading-relaxed mb-4">
+                        Read Angel Gabriel's dynamic lesson in the Chat Console on the right first!
+                      </p>
+                      <button 
+                        disabled={isThinking}
+                        onClick={() => {
+                          setExplanationAccepted(true);
+                          setChallengeFeedback(""); // reset feedback for new attempt
+                          setAngelChat("Ready to test your knowledge? Answer the fresh question on the left now!");
+                        }}
+                        className="bg-yellow-400 hover:bg-yellow-300 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed text-black font-black text-xs py-2.5 px-6 rounded border-2 border-black shadow-[2px_2px_0px_#000] transition-transform active:translate-y-0.5 uppercase"
+                      >
+                        {isThinking ? "Angel is preparing explanation..." : "Okay, sounds good! 👍"}
+                      </button>
+                    </div>
                   </div>
                 )}
-
-                <div className="space-y-3">
-                  <button 
-                    onClick={() => {
-                      setChallengeFeedback("Not quite! Just knowing facts doesn't make you step onto the dirt path. Check my advice in the Angel Chat on the right!");
-                      setAngelChat("Think about it, Messenger! Knowing trivia is helpful, but true Pistis requires you to take a step of action. Read the trampoline example in our chat history!");
-                    }}
-                    className="w-full text-left bg-slate-800 hover:bg-slate-700 text-white border-2 border-black p-3.5 font-bold text-xs shadow-[2px_2px_0px_#000] transition-colors rounded"
-                  >
-                    A) Knowing lots of facts and trivia about the Gardener.
-                  </button>
-                  <button 
-                    onClick={() => {
-                      setStageState('solved');
-                      setAngelChat("YAY YAY YAY! You unlocked the truth! Click the green button on the right to continue your journey.");
-                    }}
-                    className="w-full text-left bg-slate-800 hover:bg-slate-700 text-white border-2 border-black p-3.5 font-bold text-xs shadow-[2px_2px_0px_#000] transition-colors rounded"
-                  >
-                    B) Active loyalty and deep trust that makes you willing to do what He says.
-                  </button>
-                </div>
               </div>
 
               <div className="text-[10px] text-slate-500 text-center uppercase tracking-widest border-t border-slate-800 pt-2 mt-4 shrink-0">
@@ -349,19 +529,19 @@ export default function CrossroadsScene({ onComplete }: { onComplete?: () => voi
             Chat with Angel 👼
           </h2>
           
-          {/* Main Angel Clue Bubble (Always White on Left) */}
+          {/* Main Angel Clue Bubble */}
           <div className="bg-white text-black border-2 border-black p-3 rounded-r-xl rounded-bl-xl shadow-[2px_2px_0px_#000] text-sm font-bold self-start mr-8">
             {angelChat}
           </div>
 
-          {/* Chat Feed rendering */}
+          {/* Chat Feed */}
           {chatLog.map((msg, i) => (
             <div 
               key={i} 
               className={`border-2 border-black p-3 text-sm font-bold shadow-[2px_2px_0px_#000] max-w-[85%] ${
                 msg.sender === 'you' 
-                  ? 'bg-cyan-100 text-black rounded-l-xl rounded-br-xl self-end ml-8 text-right' // 🔵 Player bubble (Blue, Right)
-                  : 'bg-white text-black rounded-r-xl rounded-bl-xl self-start mr-8 text-left' // ⚪ Angel bubble (White, Left)
+                  ? 'bg-cyan-100 text-black rounded-l-xl rounded-br-xl self-end ml-8 text-right'
+                  : 'bg-white text-black rounded-r-xl rounded-bl-xl self-start mr-8 text-left'
               }`}
             >
               <span className="text-[10px] block text-slate-500 uppercase mb-1">
@@ -391,7 +571,7 @@ export default function CrossroadsScene({ onComplete }: { onComplete?: () => voi
               type="text" 
               value={askInput}
               onChange={(e) => setAskInput(e.target.value)}
-              disabled={isThinking} // Disable input while AI is processing
+              disabled={isThinking}
               placeholder={isThinking ? "Angel is formulating an answer..." : "Ask a question..."}
               className="flex-1 bg-white text-black placeholder-slate-500 border-2 border-black p-2 text-sm font-bold disabled:bg-slate-100 disabled:cursor-not-allowed"
             />
