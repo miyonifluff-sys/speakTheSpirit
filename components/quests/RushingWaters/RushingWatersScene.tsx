@@ -43,7 +43,6 @@ export default function RushingWatersScene({ onComplete }: { onComplete?: () => 
   const loadQuestionAndExplanation = async (remedialPrompt: string = "", currentAttemptIndex: number) => {
     setIsThinking(true);
     
-    // Updated Curriculum: Focusing strictly on CONVICTION (Elenchos)
     const conceptName = "Conviction (Elenchos)";
     const correctRule = "Trusting in the Gardener and His promises, even when your eyes see absolutely nothing.";
     const incorrectRule = "Trusting only in your own physical sight, tools, and abilities to make a bridge or boat.";
@@ -157,12 +156,20 @@ export default function RushingWatersScene({ onComplete }: { onComplete?: () => 
               setStageState('river-crossing');
               setAngelChat("Use your arrow keys to step onto the water. What are you walking on?");
             }}
-            onCrossedRiver={async () => {
+            onCrossedRiver={() => {
+              setStageState('find-clef');
+              setAngelChat("You made it across! Walk the path and look for the Treble Clef.");
+            }}
+            onFoundClef={() => {
+              setStageState('chest-scene');
+              setAngelChat("You found it! The mark has revealed a chest! Click on it to open it.");
+            }}
+            onOpenChest={async () => {
               setStageState('lock-challenge');
               setExplanationAccepted(false);
               setVerificationState('none');
               setAttempts(0);
-              setAngelChat("Incredible! You stepped out into thin air, but a bridge caught you. Let's learn what 'things not seen' means.");
+              setAngelChat("To unlock the chest, let's learn what 'things not seen' actually means!");
               await loadQuestionAndExplanation("", 0);
             }}
           />

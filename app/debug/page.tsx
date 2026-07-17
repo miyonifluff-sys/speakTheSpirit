@@ -40,7 +40,7 @@ export default function MapDebugger() {
           style={{
             width: '800px', 
             height: '600px',
-            backgroundImage: "url('/rushing_river.png')", // Change this if testing new maps!
+            backgroundImage: "url('/chest_river.png')", // Change this if testing new maps!
             backgroundSize: '100% 100%'
           }}
         >
