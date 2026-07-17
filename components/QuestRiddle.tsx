@@ -49,7 +49,16 @@ export default function QuestRiddle() {
         )}
 
         {currentScene === 'HUNGER' && (
+          <div className="w-full h-full relative flex flex-col">
+          {/* DEV CHEAT BUTTON */}
+          <button 
+            onClick={() => setCurrentScene('RIVER')}
+            className="absolute top-2 left-1/2 -translate-x-1/2 z-50 bg-red-500 border-2 border-black px-4 py-1 font-black text-white text-xs shadow-[2px_2px_0px_#000]"
+          >
+            🛠️ DEV CHEAT: Skip to River
+          </button>
           <HungerTrialScene onComplete={() => setCurrentScene('RIVER')} />
+          </div>
         )}
 
         {currentScene === 'RIVER' && (

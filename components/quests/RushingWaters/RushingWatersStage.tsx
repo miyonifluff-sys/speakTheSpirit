@@ -31,9 +31,9 @@ export default function RushingWatersStage({
       if (targetY < 0) targetY = 0;
       if (targetY > 550) targetY = 550;
 
-      // The River is from X: 200 to X: 600. 
-      if (targetX > 200 && targetX < 600) {
-        // If they step onto the river, reveal the bridge!
+      // The River is roughly from X: 200 to X: 600. 
+      if (targetX > 300 && targetX < 700) {
+        // If they step onto the water, reveal the bridge!
         if (!bridgeRevealed) {
           setBridgeRevealed(true);
         }
@@ -83,7 +83,7 @@ export default function RushingWatersStage({
       
       {/* RIDDLE INTRO */}
       {stageState === 'riddle-intro' && (
-         <div className="m-auto w-full max-w-md bg-blue-50 text-black border-4 border-black p-6 rounded-xl shadow-[6px_6px_0px_#000] text-center relative">
+         <div className="m-auto w-full max-w-md bg-blue-50 text-black border-4 border-black p-6 rounded-xl shadow-[6px_6px_0px_#000] text-center relative z-10">
            <h2 className="text-xl font-black uppercase text-blue-900 mt-4 mb-3">The Rushing Waters</h2>
            <div className="bg-white border-2 border-black p-4 rounded-lg italic font-bold text-sm text-slate-800 leading-relaxed mb-6">
              "When wild, rushing waters block where you must go,<br />
@@ -102,23 +102,17 @@ export default function RushingWatersStage({
       {stageState === 'river-crossing' && (
         <div className="w-full h-full flex flex-col items-center justify-between bg-slate-950 p-2 relative">
           
-          {/* Main Visual Stage Area */}
+          {/* 🌊 ACTUAL RUSHING RIVER (Takes up the whole visual stage) */}
           <div 
-            className="relative border-4 border-black shadow-[4px_4px_0px_#000] bg-sky-200 overflow-hidden w-full flex-1"
+            className="relative border-4 border-black shadow-[4px_4px_0px_#000] bg-[url('/rushing_river.png')] bg-cover bg-center overflow-hidden w-full flex-1"
             onDragOver={(e) => e.preventDefault()}
             onDrop={handleDropOnRiver}
           >
-            {/* Background / River Visuals */}
-            <div className="absolute inset-0 bg-[url('/river_bg.png')] bg-cover bg-center opacity-50" />
-            
-            {/* The Rushing River (Center of screen) */}
-            <div className="absolute top-0 bottom-0 left-[200px] w-[400px] bg-blue-600/80 border-x-4 border-blue-900 flex items-center justify-center overflow-hidden">
-               {/* Animated water lines for effect */}
-               <div className="w-full h-[200%] absolute bg-[url('/water_texture.png')] animate-slide-down opacity-50" />
-            </div>
+            {/* Optional: Keeping a slight animated texture over the image for extra movement */}
+            <div className="absolute inset-0 bg-[url('/water_texture.png')] animate-slide-down opacity-20 mix-blend-overlay pointer-events-none" />
 
-            {/* The Invisible Bridge (Only reveals when stepped on) */}
-            <div className={`absolute top-1/2 -translate-y-1/2 left-[200px] w-[400px] h-20 bg-yellow-400/80 border-y-4 border-yellow-600 shadow-[0_10px_0_rgba(0,0,0,0.2)] transition-opacity duration-1000 ${bridgeRevealed ? 'opacity-100' : 'opacity-0'}`}>
+            {/* 🌉 The Invisible Bridge (Only reveals when stepped on) */}
+            <div className={`absolute top-[280px] -translate-y-1/2 left-[350px] w-[300px] h-20 bg-yellow-400/80 border-y-4 border-yellow-600 shadow-[0_10px_0_rgba(0,0,0,0.2)] transition-opacity duration-1000 z-10 ${bridgeRevealed ? 'opacity-100' : 'opacity-0'}`}>
                 <div className="w-full h-full bg-[url('/cobblestone.png')] opacity-30 mix-blend-multiply" />
             </div>
 
