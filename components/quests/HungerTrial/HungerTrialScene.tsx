@@ -50,8 +50,9 @@ export default function HungerTrialScene({ onComplete }: { onComplete?: () => vo
     const incorrectRule = "Refusing to trust the Gardener until you physically see the food, or scrambling around anxiously.";
 
     const metaphors = [
-      "Assurance is like holding a title deed to a house. You don't need to be standing inside the house to know it's yours!",
-      "Assurance is an eager, confident expectation. It's like going to sleep completely certain the sun will rise tomorrow.",
+        "Assurance is like having a birthday invitation from a friend. Even if it's days away, you are completely sure the party is happening!",
+        "Assurance is like holding a ticket to a fun theme park. Even if you are standing outside the gates, you know that ride is yours to enjoy!",
+        "Assurance is an eager, confident expectation. It's like going to sleep completely certain the sun will rise tomorrow.",
     ];
     
     const chosenMetaphor = metaphors[currentAttemptIndex % metaphors.length];
