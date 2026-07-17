@@ -6,6 +6,7 @@ interface HungerTrialStageProps {
   onStartWalk: () => void;
   onReachOasis: () => void;
   onActionSelect: (action: 'fishing' | 'fruit') => void;
+  onDiscoverChest: () => void; // 👈 New event trigger
   onTransitionToChallenge: () => void;
   selectedAction: 'fishing' | 'fruit' | null;
 }
@@ -16,17 +17,22 @@ export default function HungerTrialStage({
   onStartWalk,
   onReachOasis,
   onActionSelect,
+  onDiscoverChest, //added
   onTransitionToChallenge,
   selectedAction
 }: HungerTrialStageProps) {
   // 🚶‍♂️ 2D WALKING STATE 
-  const [playerPos, setPlayerPos] = useState({ x: 80, y: 550 });
+  const [playerPos, setPlayerPos] = useState({ x: 103, y: 560 });
   const playerSpeed = 10;
 
  const hungerWaypoints = [
     { x: 79, y: 564 }, { x: 156, y: 569 }, { x: 212, y: 522 }, { x: 212, y: 522 }, { x: 152, y: 504 }, { x: 266, y: 470 }, { x: 207, y: 480 }, { x: 199, y: 568 }, { x: 339, y: 491 }, { x: 417, y: 499 }, { x: 478, y: 498 }, { x: 544, y: 497 }, { x: 599, y: 456 }, { x: 574, y: 414 }, { x: 516, y: 371 }, { x: 456, y: 373 }, { x: 372, y: 354 }, { x: 299, y: 346 }, { x: 252, y: 333 }, { x: 233, y: 279 }, { x: 303, y: 275 }, { x: 353, y: 269 }, { x: 431, y: 290 }, { x: 497, y: 296 }, { x: 560, y: 285 }, { x: 569, y: 215 }, { x: 505, y: 200 }, { x: 428, y: 204 }, { x: 366, y: 199 }, { x: 308, y: 186 }, { x: 296, y: 166 }, { x: 360, y: 154 }, { x: 407, y: 142 }, { x: 359, y: 116 }, { x: 395, y: 72 }, { x: 115, y: 520 }
   ];
 
+  // 📍 NEW: Waypoints for the Quarter Rest Oasis map (Trace/Update with Debugger later!)
+  const oasisWaypoints = [
+    { x: 103, y: 560 }, { x: 165, y: 572 }, { x: 204, y: 565 }, { x: 77, y: 582 }, { x: 131, y: 518 }, { x: 96, y: 527 }, { x: 176, y: 500 }, { x: 206, y: 471 }, { x: 225, y: 530 }, { x: 269, y: 464 }, { x: 334, y: 486 }, { x: 378, y: 489 }, { x: 436, y: 498 }, { x: 487, y: 501 }, { x: 543, y: 494 }, { x: 599, y: 484 }, { x: 616, y: 449 }, { x: 557, y: 454 }
+  ];
 
   // 🎮 UNIVERSAL MINIGAME STATE
   const [minigameStatus, setMinigameStatus] = useState<'playing' | 'won' | 'lost'>('playing');
@@ -39,12 +45,22 @@ export default function HungerTrialStage({
   const [applesCaught, setApplesCaught] = useState(0);
   const [appleIndex, setAppleIndex] = useState<number | null>(null);
 
+  // 🔄 NEW: Reset character positioning when arriving at the Oasis Map layer
+  useEffect(() => {
+    if (stageState === 'quarter-rest') {
+      setPlayerPos({ x: 103, y: 560 }); 
+    }
+  }, [stageState]);
+
   // --------------------------------------------------------
   // 1. DESERT WALK LOGIC
   // --------------------------------------------------------
   const isPositionOnPath = (x: number, y: number): boolean => {
     const pathTolerance = 45; 
-    for (const pt of hungerWaypoints) {
+    let currentWaypoints = hungerWaypoints;
+    if (stageState === 'quarter-rest') currentWaypoints = oasisWaypoints; // 👈 Added
+
+    for (const pt of currentWaypoints) {
       if (Math.sqrt(Math.pow(x - pt.x, 2) + Math.pow(y - pt.y, 2)) <= pathTolerance) return true;
     }
     return false;
@@ -60,8 +76,8 @@ export default function HungerTrialStage({
     });
   };
 
-  useEffect(() => {
-    if (stageState !== 'desert-walk') return;
+ useEffect(() => {
+    if (stageState !== 'desert-walk' && stageState !== 'quarter-rest') return; // 👈 Added option
     const handleKeyDown = (e: KeyboardEvent) => {
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) e.preventDefault();
       switch (e.key) {
@@ -77,8 +93,18 @@ export default function HungerTrialStage({
   }, [stageState]);
 
   useEffect(() => {
-    if (stageState === 'desert-walk' && playerPos.y < 120) onReachOasis();
-  }, [playerPos, stageState, onReachOasis]);
+    if (stageState === 'desert-walk' && playerPos.y < 120) {
+      onReachOasis();
+    } else if (stageState === 'quarter-rest') { // 👈 Added hot-spot monitor
+      const restX = 580;
+      const restY = 467;
+      const distanceToRest = Math.sqrt(Math.pow(playerPos.x - restX, 2) + Math.pow(playerPos.y - restY, 2));
+      
+      if (distanceToRest <= 50) {
+        onDiscoverChest();
+      }
+    }
+  }, [playerPos, stageState, onReachOasis, onDiscoverChest]);
 
   // 💬 DESERT DIALOGUE STATE
   const [bubbleText, setBubbleText] = useState("I'm hungry...");
@@ -146,6 +172,12 @@ export default function HungerTrialStage({
   // --------------------------------------------------------
   // RENDER UI
   // --------------------------------------------------------
+  // Determine backgrounds dynamically
+  const currentBackground = 
+    stageState === 'desert-walk' ? "url('/hunger_path.png')" : 
+    stageState === 'quarter-rest' ? "url('/quarter_rest_oasis.png')" : // 👈 Added
+    selectedAction === 'fishing' ? "url('/fishing.png')" : "url('/lush_garden.png')";
+
   return (
     <div className="flex-1 w-full relative overflow-hidden flex flex-col items-center justify-center bg-slate-800 rounded border-4 border-black shadow-[inset_4px_4px_0px_rgba(0,0,0,0.5)]">
       
@@ -154,8 +186,8 @@ export default function HungerTrialStage({
          <div className="m-auto w-full max-w-md bg-amber-50 text-black border-4 border-black p-6 rounded-xl shadow-[6px_6px_0px_#000] text-center relative">
            <h2 className="text-xl font-black uppercase text-amber-900 mt-4 mb-3">The Hunger Trial</h2>
            <div className="bg-white border-2 border-black p-4 rounded-lg italic font-bold text-sm text-slate-800 leading-relaxed mb-6">
-             "When the belly rumbles and the throat is dry,<br />
-             Look not to the ground, but trust the sky."
+             "When your belly grows empty and hunger grows strong,<br />
+             Trust in the Gardener and keep moving along."
            </div>
            <button 
              onClick={onStartWalk}
@@ -166,33 +198,32 @@ export default function HungerTrialStage({
          </div>
       )}
 
-      {/* DESERT WALK */}
-      {stageState === 'desert-walk' && (
+      {/* DESERT WALK / QUARTER REST MAPS */}
+      {(stageState === 'desert-walk' || stageState === 'quarter-rest') && ( // 👈 Unified View Layer
         <div className="w-full h-full flex items-center justify-center bg-slate-950 p-2">
           <div 
             className="relative border-4 border-black shadow-[4px_4px_0px_#000] bg-slate-800 overflow-hidden"
             style={{
               width: '800px', height: '600px',
-              backgroundImage: "url('/hunger_path.png')",
+              backgroundImage: currentBackground,
               backgroundSize: '100% 100%', backgroundPosition: 'center'
             }}
           >
             <div className="absolute top-4 left-4 text-xs font-black text-amber-100 bg-black/70 p-2 rounded border-2 border-amber-500 z-50 shadow-[2px_2px_0px_#000]">
-              Follow the winding path to the horizon ➔
+              {stageState === 'desert-walk' ? "Follow the winding path to the horizon ➔" : "Walk onto the hidden Quarter Rest marker! 🔍"}
             </div>
 
-            {/* 🏃‍♂️ CHARACTER + SPEECH BUBBLE CONTAINER */}
+            {/* 🏃‍♂️ CHARACTER */}
             <div 
               className="absolute w-24 h-24 -translate-x-1/2 -translate-y-[80%] transition-all duration-75 ease-out z-20 flex flex-col items-center"
               style={{ left: `${playerPos.x}px`, top: `${playerPos.y}px` }}
             >
-              {/* 💬 Pixel-Art Speech Bubble */}
-              <div className="absolute bottom-full mb-2 bg-white text-black text-[10px] font-black px-2 py-1 rounded border-2 border-black shadow-[2px_2px_0px_#000] whitespace-nowrap animate-bounce-short">
-                {bubbleText}
-                {/* Tiny arrow detailing pointing down */}
-                <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-black" />
-              </div>
-
+              {stageState === 'desert-walk' && (
+                <div className="absolute bottom-full mb-2 bg-white text-black text-[10px] font-black px-2 py-1 rounded border-2 border-black shadow-[2px_2px_0px_#000] whitespace-nowrap animate-bounce-short">
+                  {bubbleText}
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-black" />
+                </div>
+              )}
               <img src={characterPath} alt="Character" className="w-full h-full object-contain drop-shadow-[0_10px_8px_rgba(0,0,0,0.5)]" />
             </div>
 
@@ -233,48 +264,30 @@ export default function HungerTrialStage({
             backgroundImage: selectedAction === 'fishing' ? "url('/fishing.png')" : "url('/lush_garden.png')" 
           }}
         >
-          {/* DOCK BAR AT THE BOTTOM */}
           <div className="w-[90%] bg-slate-800/95 border-4 border-black p-4 mb-4 rounded-xl shadow-[6px_6px_0px_#000] flex flex-col items-center backdrop-blur-sm z-30">
             
-            {/* 🎣 FISHING UI (Now cleanly tucked down below) */}
             {selectedAction === 'fishing' && minigameStatus === 'playing' && (
               <div className="w-full flex items-center gap-4">
                 <h3 className="text-sm font-black text-white uppercase tracking-wider shrink-0">🎣 Reel Game:</h3>
-                
                 <div className="flex-1 h-8 bg-slate-950 border-2 border-black relative rounded overflow-hidden">
                   <div className="absolute top-0 bottom-0 left-[30%] w-[40%] bg-green-500 opacity-80 border-x border-green-300" />
                   <div className="absolute top-0 bottom-0 w-2 bg-red-500 border border-white" style={{ left: `calc(${fishingCursor}% - 4px)` }} />
                 </div>
-
-                <button 
-                  onClick={attemptCatch} 
-                  className="bg-blue-500 hover:bg-blue-400 text-white border-2 border-black px-4 py-2 text-xs font-black shadow-[2px_2px_0px_#000] active:translate-y-0.5 uppercase shrink-0 rounded"
-                >
-                  REEL IT IN!
-                </button>
+                <button onClick={attemptCatch} className="bg-blue-500 hover:bg-blue-400 text-white border-2 border-black px-4 py-2 text-xs font-black shadow-[2px_2px_0px_#000] active:translate-y-0.5 uppercase shrink-0 rounded">REEL IT IN!</button>
               </div>
             )}
 
-            {/* 🍎 FRUIT UI (Grid layout slightly adapted for space, sits neatly over image background) */}
             {selectedAction === 'fruit' && minigameStatus === 'playing' && (
               <div className="w-full flex flex-col items-center">
                 <div className="w-full flex justify-between items-center mb-2">
                   <h3 className="text-xs font-black text-white uppercase">🍎 Click the Apples!</h3>
-                  <div className="bg-white text-black text-xs font-black px-2 py-0.5 border-2 border-black rounded shadow-[2px_2px_0px_#000]">
-                    Apples: {applesCaught}/5
-                  </div>
+                  <div className="bg-white text-black text-xs font-black px-2 py-0.5 border-2 border-black rounded shadow-[2px_2px_0px_#000]">Apples: {applesCaught}/5</div>
                 </div>
-                
-                {/* Embedded 3x3 smaller view wrapper to let main bg show through overlay edges */}
                 <div className="w-full max-w-[200px] aspect-square bg-green-900/50 rounded border-2 border-black p-2">
                   <div className="w-full h-full grid grid-cols-3 grid-rows-3 gap-1">
                     {Array.from({ length: 9 }).map((_, i) => (
                       <div key={i} className="flex items-center justify-center border border-dashed border-green-600/30">
-                        {appleIndex === i && (
-                          <button onClick={handleAppleClick} className="text-3xl hover:scale-110 active:scale-95 transition-transform">
-                            🍎
-                          </button>
-                        )}
+                        {appleIndex === i && <button onClick={handleAppleClick} className="text-3xl hover:scale-110 active:scale-95 transition-transform">🍎</button>}
                       </div>
                     ))}
                   </div>
@@ -282,37 +295,54 @@ export default function HungerTrialStage({
               </div>
             )}
 
-            {/* ❌ UNIVERSAL LOST STATE */}
             {minigameStatus === 'lost' && (
               <div className="w-full flex items-center justify-between px-4 py-1">
                 <p className="text-sm font-black text-red-400 uppercase tracking-wide">💦 It slipped away!</p>
-                <button 
-                  onClick={() => setMinigameStatus('playing')}
-                  className="bg-amber-400 text-black border-2 border-black px-4 py-1.5 text-xs font-black shadow-[2px_2px_0px_#000] hover:bg-amber-300 active:translate-y-0.5 rounded"
-                >
-                  Try Again
-                </button>
+                <button onClick={() => setMinigameStatus('playing')} className="bg-amber-400 text-black border-2 border-black px-4 py-1.5 text-xs font-black shadow-[2px_2px_0px_#000] hover:bg-amber-300 active:translate-y-0.5 rounded">Try Again</button>
               </div>
             )}
 
-            {/* ✅ UNIVERSAL WON STATE */}
             {minigameStatus === 'won' && (
               <div className="w-full flex items-center justify-between px-4 py-1">
                 <div className="flex items-center gap-2">
                   <span className="text-2xl">{selectedAction === 'fishing' ? '🐟' : '🧺'}</span>
-                  <p className="text-sm font-black text-green-400 uppercase tracking-wide">
-                    {selectedAction === 'fishing' ? 'Caught successfully!' : 'Harvest gathered!'}
-                  </p>
+                  <p className="text-sm font-black text-green-400 uppercase tracking-wide">{selectedAction === 'fishing' ? 'Caught successfully!' : 'Harvest gathered!'}</p>
                 </div>
+                {/* ➔ Changes button handler callback route to advance into the oasis map exploration stage */}
                 <button 
                   onClick={onTransitionToChallenge}
                   className="bg-yellow-400 text-black border-2 border-black px-4 py-1.5 text-xs font-black shadow-[2px_2px_0px_#000] hover:bg-yellow-300 active:translate-y-0.5 rounded uppercase"
                 >
-                  Learn About Assurance ➔
+                  Explore the Oasis ➔
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
 
+      {/* 5. 📦 CHEST STAGE (OASIS EDITION) */}
+      {stageState === 'chest-oasis' && (
+        <div className="w-full h-full flex items-center justify-center bg-slate-950 p-2">
+          <div 
+            className="relative border-4 border-black shadow-[4px_4px_0px_#000] bg-slate-800 overflow-hidden"
+            style={{
+              width: '800px', height: '600px',
+              backgroundImage: "url('/chest_oasis.png')",
+              backgroundSize: '100% 100%', backgroundPosition: 'center'
+            }}
+          >
+            {/* INVISIBLE CLICKABLE CHEST HOTSPOT */}
+            <button 
+              onClick={onTransitionToChallenge} 
+              // Positioning exactly at { x: 497, y: 448 }
+              className="absolute w-24 h-24 -translate-x-1/2 -translate-y-1/2 cursor-pointer outline-none hover:bg-yellow-400/20 rounded-full transition-all animate-pulse"
+              style={{ left: '497px', top: '448px' }}
+              aria-label="Click to open chest"
+            >
+              {/* Optional: Add a little icon so they know to click */}
+              <span className="absolute -top-10 left-1/2 -translate-x-1/2 text-2xl">✨</span>
+            </button>
           </div>
         </div>
       )}
@@ -322,12 +352,8 @@ export default function HungerTrialStage({
         <div className="w-full h-full bg-slate-900 flex flex-col items-center justify-center p-6 text-center">
           <div className="bg-amber-100 border-4 border-black p-6 shadow-[8px_8px_0px_#000] max-w-sm text-black">
             <h2 className="text-xl font-black mb-4 uppercase text-amber-900 border-b-4 border-black pb-2">Hypostasis (Assurance)</h2>
-            <p className="text-sm font-bold text-slate-800 text-left mb-4">
-              In ancient business, a <i>hypostasis</i> was a title deed—a physical piece of paper that proved you owned a piece of land, even if you hadn't walked on it yet.
-            </p>
-            <p className="text-lg font-black text-slate-900 bg-white p-2 border-2 border-black shadow-[2px_2px_0px_#000]">
-              "Now faith is the assurance of things hoped for."
-            </p>
+            <p className="text-sm font-bold text-slate-800 text-left mb-4">In ancient business, a <i>hypostasis</i> was a title deed—a physical piece of paper that proved you owned a piece of land, even if you hadn't walked on it yet.</p>
+            <p className="text-lg font-black text-slate-900 bg-white p-2 border-2 border-black shadow-[2px_2px_0px_#000]">"Now faith is the assurance of things hoped for."</p>
           </div>
         </div>
       )}

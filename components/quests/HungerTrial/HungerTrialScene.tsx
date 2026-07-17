@@ -169,12 +169,22 @@ export default function HungerTrialScene({ onComplete }: { onComplete?: () => vo
               setAngelChat("Wonderful choice! You trusted the Gardener to provide, and your needs are met.");
             }}
             onTransitionToChallenge={async () => {
-              setStageState('lock-challenge');
-              setExplanationAccepted(false);
-              setVerificationState('none');
-              setAttempts(0);
-              setAngelChat("Now that your physical hunger is satisfied, let's feed your spirit. Let me explain what this trial means...");
-              await loadQuestionAndExplanation("", 0);
+              // 🔄 Dynamic router check added here to control the map-to-scroll transitions safely:
+              if (stageState === 'chest-oasis') {
+                setStageState('lock-challenge');
+                setExplanationAccepted(false);
+                setVerificationState('none');
+                setAttempts(0);
+                setAngelChat("Now that your physical hunger is satisfied, let's feed your spirit. Let me explain what this trial means...");
+                await loadQuestionAndExplanation("", 0);
+              } else {
+                setStageState('quarter-rest');
+                setAngelChat("Look around! Your provision revealed a secret signature hidden right in the environment!");
+              }
+            }}
+            onDiscoverChest={() => {
+              setStageState('chest-oasis');
+              setAngelChat("Incredible! Stepping onto the rest uncovered a hidden treasure chest. Go click it!");
             }}
           />
         ) : (
