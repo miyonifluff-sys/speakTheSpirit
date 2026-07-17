@@ -5,9 +5,9 @@ interface HungerTrialStageProps {
   characterPath: string;
   onStartWalk: () => void;
   onReachOasis: () => void;
-  onActionSelect: (action: 'fishing' | 'fruit' | 'water') => void;
+  onActionSelect: (action: 'fishing' | 'fruit') => void;
   onTransitionToChallenge: () => void;
-  selectedAction: 'fishing' | 'fruit' | 'water' | null;
+  selectedAction: 'fishing' | 'fruit' | null;
 }
 
 export default function HungerTrialStage({
@@ -23,9 +23,10 @@ export default function HungerTrialStage({
   const [playerPos, setPlayerPos] = useState({ x: 80, y: 550 });
   const playerSpeed = 10;
 
-  const hungerWaypoints = [
+ const hungerWaypoints = [
     { x: 79, y: 564 }, { x: 156, y: 569 }, { x: 212, y: 522 }, { x: 212, y: 522 }, { x: 152, y: 504 }, { x: 266, y: 470 }, { x: 207, y: 480 }, { x: 199, y: 568 }, { x: 339, y: 491 }, { x: 417, y: 499 }, { x: 478, y: 498 }, { x: 544, y: 497 }, { x: 599, y: 456 }, { x: 574, y: 414 }, { x: 516, y: 371 }, { x: 456, y: 373 }, { x: 372, y: 354 }, { x: 299, y: 346 }, { x: 252, y: 333 }, { x: 233, y: 279 }, { x: 303, y: 275 }, { x: 353, y: 269 }, { x: 431, y: 290 }, { x: 497, y: 296 }, { x: 560, y: 285 }, { x: 569, y: 215 }, { x: 505, y: 200 }, { x: 428, y: 204 }, { x: 366, y: 199 }, { x: 308, y: 186 }, { x: 296, y: 166 }, { x: 360, y: 154 }, { x: 407, y: 142 }, { x: 359, y: 116 }, { x: 395, y: 72 }, { x: 115, y: 520 }
   ];
+
 
   // 🎮 UNIVERSAL MINIGAME STATE
   const [minigameStatus, setMinigameStatus] = useState<'playing' | 'won' | 'lost'>('playing');
@@ -34,12 +35,9 @@ export default function HungerTrialStage({
   const [fishingCursor, setFishingCursor] = useState(0);
   const directionRef = useRef(1); 
 
-  // 🍎 FRUIT STATE
+  // 🍎 FRUIT STATE (3x3 Grid)
   const [applesCaught, setApplesCaught] = useState(0);
-  const [applePos, setApplePos] = useState<{ top: number; left: number } | null>(null);
-
-  // 🏺 WATER STATE
-  const [waterLevel, setWaterLevel] = useState(0);
+  const [appleIndex, setAppleIndex] = useState<number | null>(null);
 
   // --------------------------------------------------------
   // 1. DESERT WALK LOGIC
@@ -101,71 +99,31 @@ export default function HungerTrialStage({
   }, [stageState, selectedAction, minigameStatus]);
 
   const attemptCatch = () => {
-    if (fishingCursor >= 40 && fishingCursor <= 60) setMinigameStatus('won');
+    if (fishingCursor >= 30 && fishingCursor <= 70) setMinigameStatus('won');
     else setMinigameStatus('lost');
   };
 
 
   // --------------------------------------------------------
-  // 3. FRUIT LOGIC
+  // 3. FRUIT LOGIC (3x3 Grid)
   // --------------------------------------------------------
   useEffect(() => {
     if (stageState === 'action-scene' && selectedAction === 'fruit' && minigameStatus === 'playing') {
       const appleTimer = setInterval(() => {
-        // Randomize apple position inside the tree box
-        const randomTop = Math.floor(Math.random() * 70) + 10; // 10% to 80%
-        const randomLeft = Math.floor(Math.random() * 80) + 10; // 10% to 90%
-        setApplePos({ top: randomTop, left: randomLeft });
-      }, 1000); // New apple every 1 second
+        // Pick a random grid cell from 0 to 8
+        setAppleIndex(Math.floor(Math.random() * 9));
+      }, 800); // Apples jump around every 0.8 seconds to keep it snappy!
+      
       return () => clearInterval(appleTimer);
     }
   }, [stageState, selectedAction, minigameStatus]);
 
   const handleAppleClick = () => {
-    setApplePos(null); // Hide it instantly
+    setAppleIndex(null); // Hide it instantly
     const nextCount = applesCaught + 1;
     setApplesCaught(nextCount);
     if (nextCount >= 5) setMinigameStatus('won');
   };
-
-
-  // --------------------------------------------------------
-  // 4. WATER LOGIC
-  // --------------------------------------------------------
-  useEffect(() => {
-    if (stageState === 'action-scene' && selectedAction === 'water' && minigameStatus === 'playing') {
-      // Drain the water constantly
-      const drainTimer = setInterval(() => {
-        setWaterLevel((prev) => Math.max(0, prev - 3)); // Drains 3% every 200ms
-      }, 200);
-      return () => clearInterval(drainTimer);
-    }
-  }, [stageState, selectedAction, minigameStatus]);
-
-  const handlePumpWater = () => {
-    if (minigameStatus !== 'playing') return;
-    const nextLevel = waterLevel + 12; // Mashing adds 12%
-    if (nextLevel >= 100) {
-      setWaterLevel(100);
-      setMinigameStatus('won');
-    } else {
-      setWaterLevel(nextLevel);
-    }
-  };
-
-  // Allow spacebar mashing for water game
-  useEffect(() => {
-    if (stageState === 'action-scene' && selectedAction === 'water' && minigameStatus === 'playing') {
-      const handleSpace = (e: KeyboardEvent) => {
-        if (e.key === ' ') {
-          e.preventDefault();
-          handlePumpWater();
-        }
-      };
-      window.addEventListener('keydown', handleSpace);
-      return () => window.removeEventListener('keydown', handleSpace);
-    }
-  }, [stageState, selectedAction, minigameStatus, waterLevel]);
 
 
   // --------------------------------------------------------
@@ -225,16 +183,16 @@ export default function HungerTrialStage({
 
       {/* GARDEN CHOICE */}
       {stageState === 'garden-choice' && (
-        <div className="w-full h-full flex flex-col items-center justify-end pb-10 bg-green-800 bg-[url('https://placehold.co/800x600/166534/fff?text=Lush+Garden')] bg-cover">
-          <div className="flex gap-4 bg-white/90 p-4 rounded-xl border-4 border-black shadow-[4px_4px_0px_#000]">
-            <button onClick={() => { onActionSelect('fishing'); setMinigameStatus('playing'); }} className="flex flex-col items-center bg-blue-100 hover:bg-blue-200 border-2 border-black p-2 rounded shadow-[2px_2px_0px_#000] active:translate-y-1">
-              <span className="text-3xl">🎣</span><span className="text-black font-black text-xs mt-1">Go Fishing</span>
+        <div 
+          className="w-full h-full flex flex-col items-center justify-end pb-10 bg-green-800 bg-cover bg-center"
+          style={{ backgroundImage: "url('/lush_garden.png')" }}
+        >
+          <div className="flex gap-8 bg-white/95 p-6 rounded-xl border-4 border-black shadow-[4px_4px_0px_#000]">
+            <button onClick={() => { onActionSelect('fishing'); setMinigameStatus('playing'); }} className="flex flex-col items-center bg-blue-100 hover:bg-blue-200 border-4 border-black p-4 rounded shadow-[4px_4px_0px_#000] active:translate-y-1 transition-transform">
+              <span className="text-5xl mb-2">🎣</span><span className="text-black font-black text-sm uppercase">Go Fishing</span>
             </button>
-            <button onClick={() => { onActionSelect('fruit'); setApplesCaught(0); setMinigameStatus('playing'); }} className="flex flex-col items-center bg-red-100 hover:bg-red-200 border-2 border-black p-2 rounded shadow-[2px_2px_0px_#000] active:translate-y-1">
-              <span className="text-3xl">🍎</span><span className="text-black font-black text-xs mt-1">Pick Fruit</span>
-            </button>
-            <button onClick={() => { onActionSelect('water'); setWaterLevel(0); setMinigameStatus('playing'); }} className="flex flex-col items-center bg-cyan-100 hover:bg-cyan-200 border-2 border-black p-2 rounded shadow-[2px_2px_0px_#000] active:translate-y-1">
-              <span className="text-3xl">🏺</span><span className="text-black font-black text-xs mt-1">Drink Water</span>
+            <button onClick={() => { onActionSelect('fruit'); setApplesCaught(0); setMinigameStatus('playing'); }} className="flex flex-col items-center bg-red-100 hover:bg-red-200 border-4 border-black p-4 rounded shadow-[4px_4px_0px_#000] active:translate-y-1 transition-transform">
+              <span className="text-5xl mb-2">🍎</span><span className="text-black font-black text-sm uppercase">Pick Fruit</span>
             </button>
           </div>
         </div>
@@ -242,9 +200,13 @@ export default function HungerTrialStage({
 
       {/* ACTION SCENE (MINIGAMES & SUCCESS) */}
       {stageState === 'action-scene' && (
-        <div className="w-full h-full flex flex-col items-center justify-center bg-slate-900 p-6 relative">
-          
-          <div className="w-full max-w-md bg-slate-800 border-4 border-black p-6 rounded-xl shadow-[8px_8px_0px_#000] flex flex-col items-center relative">
+        <div 
+          className="w-full h-full flex flex-col items-center justify-center bg-slate-900 p-6 relative bg-cover bg-center"
+          style={{ 
+            backgroundImage: selectedAction === 'fishing' ? "url('/fishing.png')" : "url('/lush_garden.png')" 
+          }}
+        >
+          <div className="w-full max-w-md bg-slate-800/95 border-4 border-black p-6 rounded-xl shadow-[8px_8px_0px_#000] flex flex-col items-center relative backdrop-blur-sm">
             
             {/* 🎣 FISHING UI */}
             {selectedAction === 'fishing' && minigameStatus === 'playing' && (
@@ -260,7 +222,7 @@ export default function HungerTrialStage({
               </>
             )}
 
-            {/* 🍎 FRUIT UI */}
+            {/* 🍎 FRUIT UI (3x3 Grid) */}
             {selectedAction === 'fruit' && minigameStatus === 'playing' && (
               <>
                 <div className="w-full flex justify-between items-center mb-4">
@@ -269,39 +231,27 @@ export default function HungerTrialStage({
                     Apples: {applesCaught}/5
                   </div>
                 </div>
-                {/* Pixel Art Tree Representation */}
-                <div className="w-full h-64 bg-green-700 rounded-t-full border-4 border-black relative shadow-[inset_0_-20px_0_rgba(0,0,0,0.2)] mb-4 cursor-crosshair">
-                  {applePos && (
-                    <button 
-                      onClick={handleAppleClick}
-                      className="absolute text-4xl hover:scale-110 active:scale-95 transition-transform"
-                      style={{ top: `${applePos.top}%`, left: `${applePos.left}%` }}
-                    >
-                      🍎
-                    </button>
-                  )}
+                
+                {/* 3x3 Grid Tree Silhouette */}
+                <div className="w-full aspect-square bg-green-800 rounded-t-[3rem] rounded-b-xl border-4 border-black shadow-[inset_0_-20px_0_rgba(0,0,0,0.2)] mb-4 p-4">
+                  <div className="w-full h-full grid grid-cols-3 grid-rows-3 gap-2">
+                    {Array.from({ length: 9 }).map((_, i) => (
+                      <div key={i} className="flex items-center justify-center border-2 border-dashed border-green-900/40 rounded-lg">
+                        {appleIndex === i && (
+                          <button 
+                            onClick={handleAppleClick}
+                            className="text-5xl hover:scale-110 active:scale-95 transition-transform animate-pulse"
+                          >
+                            🍎
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <p className="text-slate-300 font-bold text-sm">Click the apples before they disappear!</p>
-              </>
-            )}
-
-            {/* 🏺 WATER UI */}
-            {selectedAction === 'water' && minigameStatus === 'playing' && (
-              <>
-                <h3 className="text-2xl font-black text-white mb-4 uppercase text-center">Pump the Well!</h3>
-                {/* Water Meter */}
-                <div className="w-16 h-64 bg-slate-950 border-4 border-black rounded-b-xl relative mb-6 overflow-hidden shadow-[inset_2px_2px_0px_rgba(0,0,0,0.8)]">
-                  <div 
-                    className="absolute bottom-0 left-0 right-0 bg-blue-500 border-t-4 border-cyan-300 transition-all duration-75" 
-                    style={{ height: `${waterLevel}%` }}
-                  />
-                </div>
-                <button 
-                  onClick={handlePumpWater}
-                  className="w-full bg-cyan-500 text-white border-4 border-black p-4 font-black text-xl shadow-[4px_4px_0px_#000] hover:bg-cyan-400 active:translate-y-1 rounded uppercase"
-                >
-                  Mash Spacebar!
-                </button>
+                <div className="w-12 h-8 bg-amber-900 border-x-4 border-black -mt-4 mb-4" /> {/* Tree trunk detail */}
+                
+                <p className="text-slate-200 font-bold text-sm bg-black/50 px-4 py-2 rounded">Click the apples before they vanish!</p>
               </>
             )}
 
@@ -323,10 +273,10 @@ export default function HungerTrialStage({
             {minigameStatus === 'won' && (
               <div className="text-center animate-bounce-short py-8">
                 <span className="text-6xl block mb-4">
-                  {selectedAction === 'fishing' ? '🐟' : selectedAction === 'fruit' ? '🧺' : '💧'}
+                  {selectedAction === 'fishing' ? '🐟' : '🧺'}
                 </span>
                 <h3 className="text-2xl font-black text-green-400 mb-6 uppercase">
-                  {selectedAction === 'fishing' ? 'A Great Catch!' : selectedAction === 'fruit' ? 'Sweet Harvest!' : 'Thirst Quenched!'}
+                  {selectedAction === 'fishing' ? 'A Great Catch!' : 'Sweet Harvest!'}
                 </h3>
                 <button 
                   onClick={onTransitionToChallenge}
@@ -357,3 +307,4 @@ export default function HungerTrialStage({
     </div>
   );
 }
+

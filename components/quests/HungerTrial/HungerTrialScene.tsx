@@ -24,7 +24,7 @@ export default function HungerTrialScene({ onComplete }: { onComplete?: () => vo
   const { setCurrentScreen } = useGame();
 
   const [stageState, setStageState] = useState('riddle-intro');
-  const [selectedAction, setSelectedAction] = useState<'fishing' | 'fruit' | 'water' | null>(null);
+  const [selectedAction, setSelectedAction] = useState<'fishing' | 'fruit' | null>(null);
 
   // 🧠 AI & GLOO STATES
   const [explanationAccepted, setExplanationAccepted] = useState(false);
