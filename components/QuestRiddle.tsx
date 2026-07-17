@@ -5,7 +5,7 @@ import { useGame } from '../context/GameContext';
 import CrossroadsScene from './quests/Crossroads/CrossroadsScene';
 // We will import the other scenes later as we build them!
 import HungerTrialScene from './quests/HungerTrial/HungerTrialScene';
-// import RushingWatersScene from './quests/RushingWaters/RushingWatersScene';
+import RushingWatersScene from './quests/RushingWaters/RushingWatersScene';
 
 export default function QuestRiddle() {
   const { setCurrentScreen, setFeedback } = useGame();
@@ -53,16 +53,7 @@ export default function QuestRiddle() {
         )}
 
         {currentScene === 'RIVER' && (
-          <div className="w-full h-full bg-slate-800 border-4 border-black rounded-xl shadow-[8px_8px_0px_#000] flex flex-col items-center justify-center text-white">
-            <h1 className="text-4xl font-black mb-4">The Rushing Waters</h1>
-            <p className="text-xl">Component coming soon! (Wireframe in progress)</p>
-            <button 
-              onClick={() => setCurrentScene('BATTLE_READY')}
-              className="mt-8 bg-green-500 border-2 border-black p-4 font-black text-black shadow-[4px_4px_0px_#000]"
-            >
-              Skip to Battle (Dev Cheat)
-            </button>
-          </div>
+          <RushingWatersScene onComplete = {() =>setCurrentScene('BATTLE_READY')} />
         )}
 
         {currentScene === 'BATTLE_READY' && (
