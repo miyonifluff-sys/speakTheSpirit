@@ -157,7 +157,7 @@ export default function HungerTrialScene({ onComplete }: { onComplete?: () => vo
             selectedAction={selectedAction}
             onStartWalk={() => {
               setStageState('desert-walk');
-              setAngelChat("Press the RIGHT ARROW key to walk through the wasteland.");
+              setAngelChat("Use the arrow keys to walk through the desert.");
             }}
             onReachOasis={() => {
               setStageState('garden-choice');
@@ -193,11 +193,9 @@ export default function HungerTrialScene({ onComplete }: { onComplete?: () => vo
                 {!explanationAccepted && (
                    <div className="absolute inset-0 bg-slate-900/95 flex flex-col items-center justify-center p-4 text-center z-10 rounded">
                       <div className="bg-slate-800 border-2 border-black p-5 rounded-lg shadow-[4px_4px_0px_#000] max-w-sm">
-                         <span className="text-4xl animate-bounce">👼</span>
-                         <h3 className="font-black uppercase text-amber-400 text-sm mt-2 mb-1">{verificationState === 'pending-chat' ? "Chat Challenge Active!" : "Divine Wisdom Required"}</h3>
-                         <p className="text-xs text-slate-300 leading-relaxed mb-4">{verificationState === 'pending-chat' ? "Explain the concept to Angel Gabriel in the Chat box to unlock your retry!" : "Read Angel Gabriel's lesson in the Chat Console first!"}</p>
+                         <h3 className="font-black uppercase text-amber-400 text-sm mt-2 mb-1">{verificationState === 'pending-chat' ?  "Explain the concept to Angel Gabriel in the Chat box to unlock your retry!" : "Read Angel Gabriel's lesson in the Chat Console first!"}</h3>
                          {verificationState !== 'pending-chat' && (
-                            <button disabled={isThinking} onClick={() => { setExplanationAccepted(true); setChallengeFeedback(""); setAngelChat("Ready? Answer the challenge!"); }} className="bg-yellow-400 text-black font-black text-xs py-2.5 px-6 rounded border-2 border-black shadow-[2px_2px_0px_#000]">{isThinking ? "Preparing..." : "I'm Ready! 👍"}</button>
+                            <button disabled={isThinking} onClick={() => { setExplanationAccepted(true); setChallengeFeedback(""); setAngelChat("Ready? Answer the challenge!"); }} className="bg-blue-400 text-black font-black text-xs py-2.5 px-6 rounded border-2 border-black shadow-[2px_2px_0px_#000]">{isThinking ? "Preparing..." : "Okay"}</button>
                          )}
                       </div>
                    </div>

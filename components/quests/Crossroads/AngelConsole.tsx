@@ -36,7 +36,11 @@ export default function AngelConsole({
         <h2 className="font-black text-sm uppercase mb-2">📜 Riddle</h2>
         <p className="text-xs font-bold italic text-slate-700">
           "Where cobblestones end and hidden trails start,<br/>
-          Choose the path less traveled with all of your heart."
+          Choose the path less traveled with all of your heart."<br/>
+          "When your belly grows empty and hunger grows strong,<br/>
+          Trust in the Gardener and keep moving along."<br/>
+          "When wild, rushing waters block where you must go, <br/>
+          Take a brave step of faith—and the bridge will just show!"<br/>
         </p>
       </div>
 
@@ -114,7 +118,7 @@ export default function AngelConsole({
               onClick={() => { if (onComplete) onComplete(); }}
               className="w-full bg-black text-white font-black py-3 uppercase shadow-[4px_4px_0px_#fff] border-2 border-white hover:bg-slate-800"
             >
-              Continue to Hunger Trial ➔
+              Continue ➔
             </button>
          </div>
       )}

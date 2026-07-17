@@ -80,6 +80,23 @@ export default function HungerTrialStage({
     if (stageState === 'desert-walk' && playerPos.y < 120) onReachOasis();
   }, [playerPos, stageState, onReachOasis]);
 
+  // 💬 DESERT DIALOGUE STATE
+  const [bubbleText, setBubbleText] = useState("I'm hungry...");
+
+  // 🔄 PERIODICALLY CHANGE SPEECH BUBBLE TEXT
+  useEffect(() => {
+    if (stageState !== 'desert-walk') return;
+
+    const phrases = ["I'm hungry...", "Are we there yet?", "So thirsty...", "Is that a mirage?", "My feet hurt..."];
+    let index = 0;
+
+    const textInterval = setInterval(() => {
+      index = (index + 1) % phrases.length;
+      setBubbleText(phrases[index]);
+    }, 3000); // Changes text every 3 seconds
+
+    return () => clearInterval(textInterval);
+  }, [stageState]);
 
   // --------------------------------------------------------
   // 2. FISHING LOGIC
@@ -144,7 +161,7 @@ export default function HungerTrialStage({
              onClick={onStartWalk}
              className="w-full bg-green-500 hover:bg-green-400 text-white font-black py-3 px-6 rounded-lg border-2 border-black shadow-[4px_4px_0px_#000] active:translate-y-1 uppercase"
            >
-             Enter the Wasteland ➔
+             Continue walking ➔
            </button>
          </div>
       )}
@@ -163,12 +180,22 @@ export default function HungerTrialStage({
             <div className="absolute top-4 left-4 text-xs font-black text-amber-100 bg-black/70 p-2 rounded border-2 border-amber-500 z-50 shadow-[2px_2px_0px_#000]">
               Follow the winding path to the horizon ➔
             </div>
+
+            {/* 🏃‍♂️ CHARACTER + SPEECH BUBBLE CONTAINER */}
             <div 
-              className="absolute w-24 h-24 -translate-x-1/2 -translate-y-[80%] transition-all duration-75 ease-out z-20"
+              className="absolute w-24 h-24 -translate-x-1/2 -translate-y-[80%] transition-all duration-75 ease-out z-20 flex flex-col items-center"
               style={{ left: `${playerPos.x}px`, top: `${playerPos.y}px` }}
             >
+              {/* 💬 Pixel-Art Speech Bubble */}
+              <div className="absolute bottom-full mb-2 bg-white text-black text-[10px] font-black px-2 py-1 rounded border-2 border-black shadow-[2px_2px_0px_#000] whitespace-nowrap animate-bounce-short">
+                {bubbleText}
+                {/* Tiny arrow detailing pointing down */}
+                <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-black" />
+              </div>
+
               <img src={characterPath} alt="Character" className="w-full h-full object-contain drop-shadow-[0_10px_8px_rgba(0,0,0,0.5)]" />
             </div>
+
             <div className="absolute bottom-4 right-4 flex flex-col items-center gap-1 bg-slate-950 p-3 rounded-full border-4 border-black shadow-[0_4px_0_#000] z-30 opacity-80 hover:opacity-100 transition-opacity">
               <button onClick={() => attemptPhysicalMove(0, -playerSpeed)} className="w-12 h-12 bg-slate-100 text-black text-xl font-black border-2 border-black rounded hover:bg-white active:translate-y-1">↑</button>
               <div className="flex gap-1">
@@ -201,47 +228,50 @@ export default function HungerTrialStage({
       {/* ACTION SCENE (MINIGAMES & SUCCESS) */}
       {stageState === 'action-scene' && (
         <div 
-          className="w-full h-full flex flex-col items-center justify-center bg-slate-900 p-6 relative bg-cover bg-center"
+          className="w-full h-full flex flex-col justify-end items-center bg-slate-900 relative bg-cover bg-center border-4 border-black"
           style={{ 
             backgroundImage: selectedAction === 'fishing' ? "url('/fishing.png')" : "url('/lush_garden.png')" 
           }}
         >
-          <div className="w-full max-w-md bg-slate-800/95 border-4 border-black p-6 rounded-xl shadow-[8px_8px_0px_#000] flex flex-col items-center relative backdrop-blur-sm">
+          {/* DOCK BAR AT THE BOTTOM */}
+          <div className="w-[90%] bg-slate-800/95 border-4 border-black p-4 mb-4 rounded-xl shadow-[6px_6px_0px_#000] flex flex-col items-center backdrop-blur-sm z-30">
             
-            {/* 🎣 FISHING UI */}
+            {/* 🎣 FISHING UI (Now cleanly tucked down below) */}
             {selectedAction === 'fishing' && minigameStatus === 'playing' && (
-              <>
-                <h3 className="text-2xl font-black text-white mb-6 uppercase text-center">Cast your line!</h3>
-                <div className="w-full h-10 bg-slate-950 border-4 border-black relative mb-8 rounded shadow-[inset_2px_2px_0px_rgba(0,0,0,0.8)] overflow-hidden">
-                  <div className="absolute top-0 bottom-0 left-[40%] w-[20%] bg-green-500 opacity-80 border-x-2 border-green-300" />
-                  <div className="absolute top-0 bottom-0 w-3 bg-red-500 border-2 border-white drop-shadow-md z-10" style={{ left: `calc(${fishingCursor}% - 6px)` }} />
+              <div className="w-full flex items-center gap-4">
+                <h3 className="text-sm font-black text-white uppercase tracking-wider shrink-0">🎣 Reel Game:</h3>
+                
+                <div className="flex-1 h-8 bg-slate-950 border-2 border-black relative rounded overflow-hidden">
+                  <div className="absolute top-0 bottom-0 left-[30%] w-[40%] bg-green-500 opacity-80 border-x border-green-300" />
+                  <div className="absolute top-0 bottom-0 w-2 bg-red-500 border border-white" style={{ left: `calc(${fishingCursor}% - 4px)` }} />
                 </div>
-                <button onClick={attemptCatch} className="w-full bg-blue-500 text-white border-4 border-black p-4 font-black text-xl shadow-[4px_4px_0px_#000] hover:bg-blue-400 active:translate-y-1 rounded">
+
+                <button 
+                  onClick={attemptCatch} 
+                  className="bg-blue-500 hover:bg-blue-400 text-white border-2 border-black px-4 py-2 text-xs font-black shadow-[2px_2px_0px_#000] active:translate-y-0.5 uppercase shrink-0 rounded"
+                >
                   REEL IT IN!
                 </button>
-              </>
+              </div>
             )}
 
-            {/* 🍎 FRUIT UI (3x3 Grid) */}
+            {/* 🍎 FRUIT UI (Grid layout slightly adapted for space, sits neatly over image background) */}
             {selectedAction === 'fruit' && minigameStatus === 'playing' && (
-              <>
-                <div className="w-full flex justify-between items-center mb-4">
-                  <h3 className="text-xl font-black text-white uppercase">Harvest Time!</h3>
-                  <div className="bg-white text-black font-black px-3 py-1 border-2 border-black rounded shadow-[2px_2px_0px_#000]">
+              <div className="w-full flex flex-col items-center">
+                <div className="w-full flex justify-between items-center mb-2">
+                  <h3 className="text-xs font-black text-white uppercase">🍎 Click the Apples!</h3>
+                  <div className="bg-white text-black text-xs font-black px-2 py-0.5 border-2 border-black rounded shadow-[2px_2px_0px_#000]">
                     Apples: {applesCaught}/5
                   </div>
                 </div>
                 
-                {/* 3x3 Grid Tree Silhouette */}
-                <div className="w-full aspect-square bg-green-800 rounded-t-[3rem] rounded-b-xl border-4 border-black shadow-[inset_0_-20px_0_rgba(0,0,0,0.2)] mb-4 p-4">
-                  <div className="w-full h-full grid grid-cols-3 grid-rows-3 gap-2">
+                {/* Embedded 3x3 smaller view wrapper to let main bg show through overlay edges */}
+                <div className="w-full max-w-[200px] aspect-square bg-green-900/50 rounded border-2 border-black p-2">
+                  <div className="w-full h-full grid grid-cols-3 grid-rows-3 gap-1">
                     {Array.from({ length: 9 }).map((_, i) => (
-                      <div key={i} className="flex items-center justify-center border-2 border-dashed border-green-900/40 rounded-lg">
+                      <div key={i} className="flex items-center justify-center border border-dashed border-green-600/30">
                         {appleIndex === i && (
-                          <button 
-                            onClick={handleAppleClick}
-                            className="text-5xl hover:scale-110 active:scale-95 transition-transform animate-pulse"
-                          >
+                          <button onClick={handleAppleClick} className="text-3xl hover:scale-110 active:scale-95 transition-transform">
                             🍎
                           </button>
                         )}
@@ -249,20 +279,16 @@ export default function HungerTrialStage({
                     ))}
                   </div>
                 </div>
-                <div className="w-12 h-8 bg-amber-900 border-x-4 border-black -mt-4 mb-4" /> {/* Tree trunk detail */}
-                
-                <p className="text-slate-200 font-bold text-sm bg-black/50 px-4 py-2 rounded">Click the apples before they vanish!</p>
-              </>
+              </div>
             )}
 
             {/* ❌ UNIVERSAL LOST STATE */}
             {minigameStatus === 'lost' && (
-              <div className="text-center animate-fade-in py-8">
-                <span className="text-5xl block mb-4">💦</span>
-                <h3 className="text-2xl font-black text-red-400 mb-4 uppercase">You missed it!</h3>
+              <div className="w-full flex items-center justify-between px-4 py-1">
+                <p className="text-sm font-black text-red-400 uppercase tracking-wide">💦 It slipped away!</p>
                 <button 
                   onClick={() => setMinigameStatus('playing')}
-                  className="bg-amber-400 text-black border-4 border-black p-3 font-black text-lg shadow-[4px_4px_0px_#000] hover:bg-amber-300 active:translate-y-1 rounded"
+                  className="bg-amber-400 text-black border-2 border-black px-4 py-1.5 text-xs font-black shadow-[2px_2px_0px_#000] hover:bg-amber-300 active:translate-y-0.5 rounded"
                 >
                   Try Again
                 </button>
@@ -271,21 +297,22 @@ export default function HungerTrialStage({
 
             {/* ✅ UNIVERSAL WON STATE */}
             {minigameStatus === 'won' && (
-              <div className="text-center animate-bounce-short py-8">
-                <span className="text-6xl block mb-4">
-                  {selectedAction === 'fishing' ? '🐟' : '🧺'}
-                </span>
-                <h3 className="text-2xl font-black text-green-400 mb-6 uppercase">
-                  {selectedAction === 'fishing' ? 'A Great Catch!' : 'Sweet Harvest!'}
-                </h3>
+              <div className="w-full flex items-center justify-between px-4 py-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">{selectedAction === 'fishing' ? '🐟' : '🧺'}</span>
+                  <p className="text-sm font-black text-green-400 uppercase tracking-wide">
+                    {selectedAction === 'fishing' ? 'Caught successfully!' : 'Harvest gathered!'}
+                  </p>
+                </div>
                 <button 
                   onClick={onTransitionToChallenge}
-                  className="bg-yellow-400 text-black border-4 border-black p-4 font-black text-lg shadow-[4px_4px_0px_#000] hover:bg-yellow-300 active:translate-y-1 rounded"
+                  className="bg-yellow-400 text-black border-2 border-black px-4 py-1.5 text-xs font-black shadow-[2px_2px_0px_#000] hover:bg-yellow-300 active:translate-y-0.5 rounded uppercase"
                 >
                   Learn About Assurance ➔
                 </button>
               </div>
             )}
+
           </div>
         </div>
       )}
