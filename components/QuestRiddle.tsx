@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useGame } from '../context/GameContext';
 import CrossroadsScene from './quests/Crossroads/CrossroadsScene';
 // We will import the other scenes later as we build them!
-// import HungerTrialScene from './quests/HungerTrial/HungerTrialScene';
+import HungerTrialScene from './quests/HungerTrial/HungerTrialScene';
 // import RushingWatersScene from './quests/RushingWaters/RushingWatersScene';
 
 export default function QuestRiddle() {
@@ -35,21 +35,21 @@ export default function QuestRiddle() {
       <div className="flex-1 w-full h-full relative">
         
         {currentScene === 'CROSSROADS' && (
-          // We pass a callback so Crossroads can tell the Stage Manager when it's done!
+          <div className="w-full h-full relative flex flex-col">
+          {/* DEV CHEAT BUTTON */}
+          <button 
+            onClick={() => setCurrentScene('HUNGER')}
+            className="absolute top-2 left-1/2 -translate-x-1/2 z-50 bg-red-500 border-2 border-black px-4 py-1 font-black text-white text-xs shadow-[2px_2px_0px_#000]"
+          >
+            🛠️ DEV CHEAT: Skip to Hunger
+          </button>
+    
           <CrossroadsScene onComplete={() => setCurrentScene('HUNGER')} />
+         </div>
         )}
 
         {currentScene === 'HUNGER' && (
-          <div className="w-full h-full bg-slate-800 border-4 border-black rounded-xl shadow-[8px_8px_0px_#000] flex flex-col items-center justify-center text-white">
-            <h1 className="text-4xl font-black mb-4">The Hunger Trial</h1>
-            <p className="text-xl">Component coming soon! (Wireframe in progress)</p>
-            <button 
-              onClick={() => setCurrentScene('RIVER')}
-              className="mt-8 bg-green-500 border-2 border-black p-4 font-black text-black shadow-[4px_4px_0px_#000]"
-            >
-              Skip to River (Dev Cheat)
-            </button>
-          </div>
+          <HungerTrialScene onComplete={() => setCurrentScene('RIVER')} />
         )}
 
         {currentScene === 'RIVER' && (
