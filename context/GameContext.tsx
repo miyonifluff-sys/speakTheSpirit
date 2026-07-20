@@ -25,6 +25,10 @@ interface GameContextType {
   loginMethod: LoginMethod;
   handleLogout: () => void;
 
+  //New: verse chunks state
+  verseChunks: string[];
+  setVerseChunks: (chunks: string[]) => void;
+
   // Game Logic State
   introStep: number;
   setIntroStep: (step: number) => void;
@@ -85,6 +89,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [userId, setUserId] = useState<string | null>(null);
   const [loginMethod, setLoginMethod] = useState<LoginMethod>(null);
 
+  const[verseChunks, setVerseChunks] = useState<string[]>([]);
   // Gameplay Progress
   const [introStep, setIntroStep] = useState<number>(0);
   const [questObjectClicked, setQuestObjectClicked] = useState<boolean>(false);
@@ -403,6 +408,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         userId,
         loginMethod,
         handleLogout,
+
+        //expose the chunks!
+        verseChunks,
+        setVerseChunks,
 
         introStep,
         setIntroStep,

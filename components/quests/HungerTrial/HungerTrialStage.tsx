@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+// 1. NEW: Import the GameContext hook
+import { useGame } from '../../../context/GameContext';
 
 interface HungerTrialStageProps {
   stageState: string;
@@ -21,6 +23,9 @@ export default function HungerTrialStage({
   onTransitionToChallenge,
   selectedAction
 }: HungerTrialStageProps) {
+  // 2. NEW: Grab verseChunks from the context
+  const { verseChunks } = useGame();
+
   // 🚶‍♂️ 2D WALKING STATE 
   const [playerPos, setPlayerPos] = useState({ x: 103, y: 560 });
   const playerSpeed = 10;
@@ -353,11 +358,13 @@ export default function HungerTrialStage({
           <div className="bg-amber-100 border-4 border-black p-6 shadow-[8px_8px_0px_#000] max-w-sm text-black">
             <h2 className="text-xl font-black mb-4 uppercase text-amber-900 border-b-4 border-black pb-2">Hypostasis (Assurance)</h2>
             <p className="text-sm font-bold text-slate-800 text-left mb-4">In ancient business, a <i>hypostasis</i> was a title deed—a physical piece of paper that proved you owned a piece of land, even if you hadn't walked on it yet.</p>
-            <p className="text-lg font-black text-slate-900 bg-white p-2 border-2 border-black shadow-[2px_2px_0px_#000]">"Now faith is the assurance of things hoped for."</p>
+            {/* 3. NEW: Dynamic chunks displaying the first two fragments! */}
+            <p className="text-lg font-black text-slate-900 bg-white p-2 border-2 border-black shadow-[2px_2px_0px_#000]">
+              "{verseChunks.length >= 2 ? `${verseChunks[0]} ${verseChunks[1]}` : 'Forging...'}"
+            </p>
           </div>
         </div>
       )}
     </div>
   );
 }
-

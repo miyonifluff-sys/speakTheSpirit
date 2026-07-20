@@ -401,3 +401,58 @@ export async function verifyComprehension(
     };
   }
 }
+
+// app/actions/gloo.ts (Append this function)
+
+export async function chunkVerseWithGloo(verseText: string): Promise<string[]> {
+  try {
+    const accessToken = await getGlooAccessToken();
+    if (!accessToken) throw new Error("Could not acquire Gloo token.");
+
+    const systemPrompt = `
+      You are a specialized game engine parser for a scripture memory game.
+      Your task is to break down a Bible verse text into sequential, natural, semantic chunks optimal for a child to memorize step-by-step.
+      
+      Rules:
+      1. Divide the sentence at natural punctuation marks, clauses, or logical breathing breaks.
+      2. Provide exactly 3 sequential chunks.
+      3. Return a strict, valid JSON object containing an array under the key "chunks". Do not include markdown code blocks.
+      
+      Example Expected JSON format:
+      {
+        "chunks": ["Now faith is", "the assurance of things hoped for,", "the conviction of things not seen."]
+      }
+    `;
+
+    const url = "https://platform.ai.gloo.com/ai/v2/chat/completions";
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        "Authorization": `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        auto_routing: true,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `Parse this verse text: "${verseText}"` }
+        ],
+        temperature: 0.2 // Kept low for consistent formatting
+      }),
+      signal: AbortSignal.timeout(12000)
+    });
+
+    if (!response.ok) throw new Error("Gloo failed parsing the verse.");
+
+    const data = await response.json();
+    const rawText = data.choices[0].message.content.trim();
+    const cleanJsonText = rawText.replace(/^```json\s*|```$/g, '');
+    const parsedData = JSON.parse(cleanJsonText);
+
+    return parsedData.chunks || [verseText]; // Fallback to full verse if structure fails
+  } catch (error) {
+    console.error("❌ Error chunking verse with Gloo:", error);
+    // Hardcoded layout fallback if network/parsing drops out
+    return verseText.split(',').map(s => s.trim());
+  }
+}

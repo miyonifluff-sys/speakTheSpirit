@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useGame } from '../../../context/GameContext';
 import { addLog } from '../../../utils/gameEvents';
-import { askAngelGabriel, generateAdaptiveQuestion, verifyComprehension } from '../../../app/actions/gloo';;
+import { askAngelGabriel, generateAdaptiveQuestion, verifyComprehension } from '../../../app/actions/gloo';
 import CrossroadsMap from './CrossroadsMap';
 import AngelConsole from './AngelConsole';
 
@@ -21,7 +21,8 @@ interface DynamicQuestion {
 }
 
 export default function CrossroadsScene({ onComplete }: { onComplete?: () => void }) {
-  const { setCurrentScreen } = useGame();
+  // 1. NEW: Grab verseChunks from useGame!
+  const { setCurrentScreen, verseChunks } = useGame();
 
   const [stageState, setStageState] = useState('riddle-intro');
   const [explanationAccepted, setExplanationAccepted] = useState(false);
@@ -92,7 +93,14 @@ export default function CrossroadsScene({ onComplete }: { onComplete?: () => voi
 
     const chosenText = selectedOption === 'A' ? currentQuestion.optionA : (selectedOption === 'B' ? currentQuestion.optionB : currentQuestion.optionC);
 
-    if (selectedOption === currentQuestion.correctOption) {
+    // 🛡️ BULLETPROOF AI VALIDATION
+    const rawCorrect = currentQuestion.correctOption.toString().trim();
+    const isCorrect = 
+      selectedOption === rawCorrect.toUpperCase() || // Catches 'a', 'A ', ' A'
+      rawCorrect.toUpperCase().startsWith(selectedOption) || // Catches 'A.', 'A)', 'Option A' (if formatted Weirdly)
+      (chosenText && rawCorrect.toLowerCase().includes(chosenText.toLowerCase().trim())); // Catches if it just outputs the full answer text
+
+    if (isCorrect) {
       setStageState('solved');
       addLog("Successfully broke the lock!", "system");
       setIsThinking(true);
@@ -151,8 +159,9 @@ export default function CrossroadsScene({ onComplete }: { onComplete?: () => voi
         <div className="w-full flex justify-between items-center bg-slate-800 border-2 border-black p-2 rounded shadow-[2px_2px_0px_#000] shrink-0 mb-4 z-20">
           <div>
             <h3 className="text-[10px] font-black uppercase text-amber-400">Weapon Tracker</h3>
+            {/* 2. NEW: Dynamic Tracker Text */}
             <p className="text-xs font-bold text-slate-200">
-              {stageState === 'solved' ? "Now faith is..." : "[ _ _ _ _ _ ]"}
+              {stageState === 'solved' ? `${verseChunks[0] || "Forging..."}` : "[ _ _ _ _ _ ]"}
             </p>
           </div>
           {stageState === 'lock-challenge' && (
@@ -243,7 +252,10 @@ export default function CrossroadsScene({ onComplete }: { onComplete?: () => voi
             <div className="w-full h-full bg-slate-900 flex flex-col items-center justify-center bg-[radial-gradient(#eab308_1px,transparent_1px)] [background-size:16px_16px]">
               <div className="bg-yellow-100 border-4 border-black p-8 shadow-[8px_8px_0px_#000] max-w-sm text-center animate-fade-in text-black">
                 <h2 className="text-2xl font-black mb-2 uppercase tracking-wide text-amber-900">📜 SCROLL UNLOCKED</h2>
-                <p className="text-xl font-bold italic text-slate-800">"Now faith is..."</p>
+                {/* 3. NEW: Dynamic Solved Text */}
+                <p className="text-xl font-bold italic text-slate-800">
+                  "{verseChunks[0] || "Forging..."}"
+                </p>
               </div>
               <div className="w-32 h-32 mt-8 drop-shadow-xl animate-bounce"><img src={characterPath} alt="Character" className="w-full h-full object-contain" /></div>
             </div>

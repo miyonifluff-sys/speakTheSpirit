@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+// 1. NEW: Import the GameContext hook
+import { useGame } from '../../../context/GameContext';
 
 interface RushingWatersStageProps {
   stageState: string;
@@ -18,6 +20,9 @@ export default function RushingWatersStage({
   onOpenChest
 }: RushingWatersStageProps) {
   
+  // 2. NEW: Grab verseChunks from the context
+  const { verseChunks } = useGame();
+
   // 🚶‍♂️ 2D WALKING STATE
   const [playerPos, setPlayerPos] = useState({ x: 50, y: 300 });
   const [bridgeRevealed, setBridgeRevealed] = useState(false);
@@ -217,8 +222,9 @@ export default function RushingWatersStage({
             <p className="text-sm font-bold text-slate-800 text-left mb-4">
               In ancient courts, an <i>elenchos</i> was physical evidence that forced the truth to light. Faith isn't a blind guess; it is acting on the undeniable character of the Gardener.
             </p>
+            {/* 3. NEW: Dynamic chunks displaying the final fragment! */}
             <p className="text-lg font-black text-slate-900 bg-white p-2 border-2 border-black shadow-[2px_2px_0px_#000]">
-              "and the conviction of things not seen."
+              "{verseChunks.length >= 3 ? verseChunks.slice(2).join(' ') : 'Forging...'}"
             </p>
           </div>
         </div>

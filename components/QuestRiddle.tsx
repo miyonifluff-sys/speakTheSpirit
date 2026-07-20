@@ -1,17 +1,39 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useGame } from '../context/GameContext';
 import CrossroadsScene from './quests/Crossroads/CrossroadsScene';
-// We will import the other scenes later as we build them!
 import HungerTrialScene from './quests/HungerTrial/HungerTrialScene';
 import RushingWatersScene from './quests/RushingWaters/RushingWatersScene';
 
-export default function QuestRiddle() {
-  const { setCurrentScreen, setFeedback } = useGame();
+// Import your new services!
+import { fetchVerseFromYouVersion } from '@/services/youVersionService';
+import { chunkVerseWithGloo } from '@/app/actions/gloo';
 
-  // Track which physical 'room' or 'scene' the player is currently in
+export default function QuestRiddle() {
+  // 1. Fixed: Grab 'userId', 'verseChunks', and 'setVerseChunks' from context
+  const { setCurrentScreen, setFeedback, userId, verseChunks, setVerseChunks } = useGame();
+
   const [currentScene, setCurrentScene] = useState<'CROSSROADS' | 'HUNGER' | 'RIVER' | 'BATTLE_READY'>('CROSSROADS');
+
+  // 2. Fetch and chunk the verse on load
+  useEffect(() => {
+    async function loadVerse() {
+      // Don't try to fetch if we don't have a user loaded yet!
+      if (!userId) return; 
+
+      const rawVerse = await fetchVerseFromYouVersion(userId, "HEB.11.1");
+      if (rawVerse) {
+        const chunks = await chunkVerseWithGloo(rawVerse);
+        setVerseChunks(chunks);
+      }
+    }
+    
+    // Only load if we haven't already and the user exists
+    if (verseChunks.length === 0 && userId) {
+      loadVerse();
+    }
+  }, [userId, verseChunks.length, setVerseChunks]);
 
   return (
     <div className="flex-1 flex flex-col w-full h-full">
@@ -36,39 +58,43 @@ export default function QuestRiddle() {
         
         {currentScene === 'CROSSROADS' && (
           <div className="w-full h-full relative flex flex-col">
-          {/* DEV CHEAT BUTTON */}
-          <button 
-            onClick={() => setCurrentScene('HUNGER')}
-            className="absolute top-2 left-1/2 -translate-x-1/2 z-50 bg-red-500 border-2 border-black px-4 py-1 font-black text-white text-xs shadow-[2px_2px_0px_#000]"
-          >
-            🛠️ DEV CHEAT: Skip to Hunger
-          </button>
-    
-          <CrossroadsScene onComplete={() => setCurrentScene('HUNGER')} />
+            {/* DEV CHEAT BUTTON */}
+            <button 
+              onClick={() => setCurrentScene('HUNGER')}
+              className="absolute top-2 left-1/2 -translate-x-1/2 z-50 bg-red-500 border-2 border-black px-4 py-1 font-black text-white text-xs shadow-[2px_2px_0px_#000]"
+            >
+              🛠️ DEV CHEAT: Skip to Hunger
+            </button>
+            <CrossroadsScene onComplete={() => setCurrentScene('HUNGER')} />
          </div>
         )}
 
         {currentScene === 'HUNGER' && (
           <div className="w-full h-full relative flex flex-col">
-          {/* DEV CHEAT BUTTON */}
-          <button 
-            onClick={() => setCurrentScene('RIVER')}
-            className="absolute top-2 left-1/2 -translate-x-1/2 z-50 bg-red-500 border-2 border-black px-4 py-1 font-black text-white text-xs shadow-[2px_2px_0px_#000]"
-          >
-            🛠️ DEV CHEAT: Skip to River
-          </button>
-          <HungerTrialScene onComplete={() => setCurrentScene('RIVER')} />
+            {/* DEV CHEAT BUTTON */}
+            <button 
+              onClick={() => setCurrentScene('RIVER')}
+              className="absolute top-2 left-1/2 -translate-x-1/2 z-50 bg-red-500 border-2 border-black px-4 py-1 font-black text-white text-xs shadow-[2px_2px_0px_#000]"
+            >
+              🛠️ DEV CHEAT: Skip to River
+            </button>
+            <HungerTrialScene onComplete={() => setCurrentScene('RIVER')} />
           </div>
         )}
 
         {currentScene === 'RIVER' && (
-          <RushingWatersScene onComplete = {() =>setCurrentScene('BATTLE_READY')} />
+          <RushingWatersScene onComplete={() => setCurrentScene('BATTLE_READY')} />
         )}
 
         {currentScene === 'BATTLE_READY' && (
            <div className="w-full h-full bg-amber-100 border-4 border-black rounded-xl shadow-[8px_8px_0px_#000] flex flex-col items-center justify-center text-black">
               <h1 className="text-5xl font-black mb-4">⚔️ WEAPON FORGED ⚔️</h1>
-              <p className="text-2xl font-bold italic mb-8">"Now faith is the assurance of things hoped for, the conviction of things not seen."</p>
+              
+              {/* 3. NEW: Dynamically joins your chunks with a space! */}
+              <p className="text-2xl font-bold italic mb-8 text-center max-w-2xl">
+                "{verseChunks.length > 0 ? verseChunks.join(' ') : 'Forging weapon...'}"
+              </p>
+
               <button 
                 onClick={() => setCurrentScreen('BATTLE')}
                 className="bg-red-500 hover:bg-red-400 text-white border-4 border-black p-6 rounded-xl font-black text-2xl shadow-[8px_8px_0px_#000] animate-pulse"
