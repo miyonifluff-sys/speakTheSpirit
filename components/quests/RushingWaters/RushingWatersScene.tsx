@@ -43,13 +43,13 @@ export default function RushingWatersScene({ onComplete }: { onComplete?: () => 
   const loadQuestionAndExplanation = async (remedialPrompt: string = "", currentAttemptIndex: number) => {
     setIsThinking(true);
     
-    const conceptName = "Conviction (Elenchos)";
+    const conceptName = "Conviction of things not seen.";
     const correctRule = "Trusting in the Gardener and His promises, even when your eyes see absolutely nothing.";
     const incorrectRule = "Trusting only in your own physical sight, tools, and abilities to make a bridge or boat.";
 
     const metaphors = [
-      "Conviction means trusting in things not seen! Just like gravity or a radio frequency, just because you can't see it doesn't mean it isn't real and holding you up.",
-      "In ancient courts, an 'elenchos' was undeniable proof. The Gardener's character is our proof, even when the river looks scary!",
+      "Sometimes you have faith in things you can't actually see with your eyes! Just like gravity or a radio frequency, just because you can't see it doesn't mean it isn't real and holding you up.",
+      "A conviction is undeniable proof. The Gardener's character is our proof, even when the river looks scary!",
     ];
     
     const chosenMetaphor = metaphors[currentAttemptIndex % metaphors.length];
