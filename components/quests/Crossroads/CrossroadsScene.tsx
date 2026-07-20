@@ -93,12 +93,30 @@ export default function CrossroadsScene({ onComplete }: { onComplete?: () => voi
 
     const chosenText = selectedOption === 'A' ? currentQuestion.optionA : (selectedOption === 'B' ? currentQuestion.optionB : currentQuestion.optionC);
 
-    // 🛡️ BULLETPROOF AI VALIDATION
-    const rawCorrect = currentQuestion.correctOption.toString().trim();
+    // 🛡️ CATCH ALTERNATIVE AI KEYS
+    // The AI might be ignoring our interface and using a different word for the answer key!
+    const aiQuestion = currentQuestion as any; 
+    const rawCorrect = String(
+      aiQuestion.correctOption || 
+      aiQuestion.correctAnswer || 
+      aiQuestion.correct_option || 
+      aiQuestion.answer || 
+      aiQuestion.correct || 
+      ""
+    ).trim();
+    
+    // AUTO-REROLL: Only trigger if the AI *truly* forgot to include the answer anywhere
+    if (!rawCorrect || rawCorrect === "undefined") {
+      setChallengeFeedback("Oops! The heavenly static scrambled the answer key. Asking Gabriel for a fresh question...");
+      // Pass an empty string so Gabriel just does a normal re-introduction!
+      await loadQuestionAndExplanation("", attempts);
+      return; 
+    }
+
     const isCorrect = 
-      selectedOption === rawCorrect.toUpperCase() || // Catches 'a', 'A ', ' A'
-      rawCorrect.toUpperCase().startsWith(selectedOption) || // Catches 'A.', 'A)', 'Option A' (if formatted Weirdly)
-      (chosenText && rawCorrect.toLowerCase().includes(chosenText.toLowerCase().trim())); // Catches if it just outputs the full answer text
+      selectedOption === rawCorrect.toUpperCase() || 
+      rawCorrect.toUpperCase().startsWith(selectedOption) || 
+      (chosenText && rawCorrect.toLowerCase().includes(chosenText.toLowerCase().trim())); 
 
     if (isCorrect) {
       setStageState('solved');
@@ -109,7 +127,9 @@ export default function CrossroadsScene({ onComplete }: { onComplete?: () => voi
         if (res.reply) { setAngelChat(res.reply); setChatLog(prev => [...prev, { sender: 'angel', text: res.reply }]); }
       } finally { setIsThinking(false); }
     } else {
-      const correctText = currentQuestion.correctOption === 'A' ? currentQuestion.optionA : (currentQuestion.correctOption === 'B' ? currentQuestion.optionB : currentQuestion.optionC);
+      const correctText = currentQuestion.optionA; // Fallback text just in case
+      const actualCorrectText = rawCorrect.toUpperCase().includes('A') ? currentQuestion.optionA : (rawCorrect.toUpperCase().includes('B') ? currentQuestion.optionB : currentQuestion.optionC);
+      
       const nextAttempt = attempts + 1;
       setAttempts(nextAttempt);
       setChallengeFeedback("Not quite! Angel Gabriel is testing your understanding in the chat before you can retry.");
@@ -117,7 +137,7 @@ export default function CrossroadsScene({ onComplete }: { onComplete?: () => voi
       setVerificationState('pending-chat'); 
       setAngelChat("That wasn't quite it, Messenger. Answer my question in the chat console on the right so we can clear this up!");
       
-      await loadQuestionAndExplanation(`The question asked: "${currentQuestion.question}". Child chose "${chosenText}" instead of "${correctText}". Explain why.`, nextAttempt);
+      await loadQuestionAndExplanation(`The question asked: "${currentQuestion.question}". Child chose "${chosenText}" instead of "${actualCorrectText || correctText}". Explain why.`, nextAttempt);
     }
   };
 

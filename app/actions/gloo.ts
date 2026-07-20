@@ -413,10 +413,17 @@ export async function chunkVerseWithGloo(verseText: string): Promise<string[]> {
       You are a specialized game engine parser for a scripture memory game.
       Your task is to break down a Bible verse text into sequential, natural, semantic chunks optimal for a child to memorize step-by-step.
       
-      Rules:
+      CRITICAL INSTRUCTION FOR HEBREWS 11:1:
+      If the text provided is Hebrews 11:1, you MUST divide the text into exactly 3 sequential chunks based on these specific themes:
+      1) The introduction of faith (e.g., "Now faith is" or "Faith shows the reality")
+      2) The assurance/confidence in what we hope for (e.g., "the assurance of things hoped for," or "of what we hope for;")
+      3) The conviction/evidence of things we cannot see (e.g., "the conviction of things not seen." or "it is the evidence of things we cannot see.")
+      
+      General Rules for other verses:
       1. Divide the sentence at natural punctuation marks, clauses, or logical breathing breaks.
-      2. Provide exactly 3 sequential chunks.
-      3. Return a strict, valid JSON object containing an array under the key "chunks". Do not include markdown code blocks.
+      2. Provide a minimum of 2 and a maximum of 4 sequential chunks.
+      
+      Return a strict, valid JSON object containing an array under the key "chunks". Do not include markdown code blocks.
       
       Example Expected JSON format:
       {

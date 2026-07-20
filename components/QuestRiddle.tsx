@@ -92,7 +92,7 @@ export default function QuestRiddle() {
               
               {/* 3. NEW: Dynamically joins your chunks with a space! */}
               <p className="text-2xl font-bold italic mb-8 text-center max-w-2xl">
-                "{verseChunks.length > 0 ? verseChunks.join(' ') : 'Forging weapon...'}"
+                "Hebrews 11:1: {verseChunks.length > 0 ? verseChunks.join(' ') : 'Forging weapon...'}"
               </p>
 
               <button 

@@ -224,7 +224,7 @@ export default function RushingWatersStage({
             </p>
             {/* 3. NEW: Dynamic chunks displaying the final fragment! */}
             <p className="text-lg font-black text-slate-900 bg-white p-2 border-2 border-black shadow-[2px_2px_0px_#000]">
-              "{verseChunks.length >= 3 ? verseChunks.slice(2).join(' ') : 'Forging...'}"
+              "{verseChunks.length > 0 ? verseChunks.join(' ') : 'Forging...'}"
             </p>
           </div>
         </div>
