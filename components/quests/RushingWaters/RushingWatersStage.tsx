@@ -218,10 +218,6 @@ export default function RushingWatersStage({
       {stageState === 'solved' && (
         <div className="w-full h-full bg-slate-900 flex flex-col items-center justify-center p-6 text-center">
           <div className="bg-blue-100 border-4 border-black p-6 shadow-[8px_8px_0px_#000] max-w-sm text-black">
-            <h2 className="text-xl font-black mb-4 uppercase text-blue-900 border-b-4 border-black pb-2">Conviction (Elenchos)</h2>
-            <p className="text-sm font-bold text-slate-800 text-left mb-4">
-              In ancient courts, an <i>elenchos</i> was physical evidence that forced the truth to light. Faith isn't a blind guess; it is acting on the undeniable character of the Gardener.
-            </p>
             {/* 3. NEW: Dynamic chunks displaying the final fragment! */}
             <p className="text-lg font-black text-slate-900 bg-white p-2 border-2 border-black shadow-[2px_2px_0px_#000]">
               "{verseChunks.length > 0 ? verseChunks.join(' ') : 'Forging...'}"

@@ -15,12 +15,12 @@ export async function fetchVerseFromYouVersion(
     .maybeSingle();
 
   if (error) {
-    console.error("⚠️ Supabase warning (defaulting to 3034):", error.message);
+    console.error("⚠️ Supabase warning (defaulting to 111):", error.message);
   }
 
   // 2. Safely grab the ID, or default to 477 if it fails or is NULL
-  const bibleVersionId = profile?.bible_version_id || 3034; 
-  //const bibleVersionId = 3034;
+  const bibleVersionId = profile?.bible_version_id || 111; 
+  //const bibleVersionId = 111;
 
   const apiKey = process.env.YOUVERSION_API_KEY; 
   const url = `https://api.youversion.com/v1/bibles/${bibleVersionId}/passages/${passageId}`;

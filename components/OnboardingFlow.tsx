@@ -34,7 +34,7 @@ export default function OnboardingFlow() {
     
     const fallbackVersions: Record<string, BibleVersion[]> = {
       en: [
-        { id: 477, abbreviation: 'ESV', title: 'English Standard Version', language_tag: 'en' },
+        { id: 59, abbreviation: 'ESV', title: 'English Standard Version', language_tag: 'en' },
         { id: 111, abbreviation: 'NIV', title: 'New International Version', language_tag: 'en' },
         { id: 116, abbreviation: 'NLT', title: 'New Living Translation', language_tag: 'en' },
         { id: 1, abbreviation: 'KJV', title: 'King James Version', language_tag: 'en' }

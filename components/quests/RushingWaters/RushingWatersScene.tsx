@@ -40,6 +40,8 @@ export default function RushingWatersScene({ onComplete }: { onComplete?: () => 
   const [isThinking, setIsThinking] = useState(false);
   const [challengeFeedback, setChallengeFeedback] = useState("");
 
+  const { verseChunks } = useGame();
+
   const loadQuestionAndExplanation = async (remedialPrompt: string = "", currentAttemptIndex: number) => {
     setIsThinking(true);
     
@@ -142,7 +144,7 @@ export default function RushingWatersScene({ onComplete }: { onComplete?: () => 
           <div>
             <h3 className="text-[10px] font-black uppercase text-amber-400">Weapon Tracker</h3>
             <p className="text-xs font-bold text-slate-200">
-              {stageState === 'solved' ? "Now faith is the assurance of things hoped for, the conviction of things not seen." : "Now faith is the assurance of things hoped for... [ _ _ _ _ _ ]"}
+              {stageState === 'solved' ? `${verseChunks[0]} ${verseChunks[1]} ${verseChunks[2]}` : `${verseChunks[0]} ${verseChunks[1]}` + " [ _ _ _ _ _ ]"}
             </p>
           </div>
         </div>

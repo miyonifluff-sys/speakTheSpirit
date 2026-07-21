@@ -415,7 +415,7 @@ export async function chunkVerseWithGloo(verseText: string): Promise<string[]> {
       
       CRITICAL INSTRUCTION FOR HEBREWS 11:1:
       If the text provided is Hebrews 11:1, you MUST divide the text into exactly 3 sequential chunks based on these specific themes:
-      1) The introduction of faith (e.g., "Now faith is" or "Faith shows the reality")
+      1) The introduction of faith (e.g., "Now faith is" or "Faith shows the reality"). DO NOT INCLUDE confidence/assurance in what we hope for.
       2) The assurance/confidence in what we hope for (e.g., "the assurance of things hoped for," or "of what we hope for;")
       3) The conviction/evidence of things we cannot see (e.g., "the conviction of things not seen." or "it is the evidence of things we cannot see.")
       

@@ -41,6 +41,9 @@ export default function HungerTrialScene({ onComplete }: { onComplete?: () => vo
   const [selectedGender] = useState<'girl' | 'boy'>('girl');
   const characterPath = selectedGender === 'girl' ? "/characters/girlnobackground.png" : "/characters/boynobackground.png";
 
+  const { verseChunks } = useGame();
+
+
   const loadQuestionAndExplanation = async (remedialPrompt: string = "", currentAttemptIndex: number) => {
     setIsThinking(true);
     
@@ -145,7 +148,7 @@ export default function HungerTrialScene({ onComplete }: { onComplete?: () => vo
           <div>
             <h3 className="text-[10px] font-black uppercase text-amber-400">Weapon Tracker</h3>
             <p className="text-xs font-bold text-slate-200">
-              {stageState === 'solved' ? "Now faith is the assurance of things hoped for..." : "Now faith is [ _ _ _ _ _ ]"}
+              {stageState === 'solved' ? `${verseChunks[0]} ${verseChunks[1]}` : `${verseChunks[0]}` + " [ _ _ _ _ _ ]"}
             </p>
           </div>
         </div>
