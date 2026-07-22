@@ -64,17 +64,22 @@ export async function askAngelGabriel(
       throw new Error("Could not acquire Gloo access token.");
     }
 
+    // 1. Add display_name to the select string
     const { data: profile } = await supabase
       .from('profiles')
-      .select('grade_level, church_experience')
+      .select('grade_level, church_experience, display_name') 
       .eq('id', userId)
       .single();
 
     const grade = profile?.grade_level || 'an unknown grade';
     const experience = profile?.church_experience || 'unknown';
+    
+    // 2. Safely grab the name, default to "Traveler" if missing
+    const playerName = profile?.display_name || 'Traveler'; 
 
+    // 3. Inject the name into the prompt!
     const fullyFormedPrompt = `
-      You are Angel Gabriel, a warm, encouraging, and witty heavenly messenger guiding a child in the game "Speak the Spirit".
+      You are Angel Gabriel, a warm, encouraging, and witty heavenly messenger guiding a child named ${playerName} in the game "Speak the Spirit".
       The player is in ${grade} and their church experience level is: "${experience}".
       
       ${systemInstructions}

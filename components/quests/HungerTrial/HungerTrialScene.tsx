@@ -21,7 +21,7 @@ interface DynamicQuestion {
 }
 
 export default function HungerTrialScene({ onComplete }: { onComplete?: () => void }) {
-  const { setCurrentScreen, characterPath } = useGame();
+  const { setCurrentScreen, characterPath, displayName } = useGame();
 
   const [stageState, setStageState] = useState('riddle-intro');
   const [selectedAction, setSelectedAction] = useState<'fishing' | 'fruit' | null>(null);
@@ -32,7 +32,7 @@ export default function HungerTrialScene({ onComplete }: { onComplete?: () => vo
   const [activeComprehensionQuestion, setActiveComprehensionQuestion] = useState("");
   const [currentQuestion, setCurrentQuestion] = useState<DynamicQuestion | null>(null);
   const [attempts, setAttempts] = useState(0);
-  const [angelChat, setAngelChat] = useState("Traveler, your stomach may rumble, but true provision comes to those who seek it. Read the riddle!");
+  const [angelChat, setAngelChat] = useState(`${displayName || 'Traveler'}, your stomach may rumble, but true provision comes to those who seek it. Read the riddle!`);
   const [askInput, setAskInput] = useState("");
   const [chatLog, setChatLog] = useState<ChatMessage[]>([]);
   const [isThinking, setIsThinking] = useState(false);

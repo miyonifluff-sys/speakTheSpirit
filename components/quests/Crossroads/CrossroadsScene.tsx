@@ -22,7 +22,7 @@ interface DynamicQuestion {
 
 export default function CrossroadsScene({ onComplete }: { onComplete?: () => void }) {
   // 1. NEW: Grab verseChunks from useGame!
-  const { setCurrentScreen, verseChunks, characterPath } = useGame();
+  const { setCurrentScreen, verseChunks, characterPath, displayName } = useGame();
 
   const [stageState, setStageState] = useState('riddle-intro');
   const [explanationAccepted, setExplanationAccepted] = useState(false);
@@ -32,7 +32,7 @@ export default function CrossroadsScene({ onComplete }: { onComplete?: () => voi
   const [currentQuestion, setCurrentQuestion] = useState<DynamicQuestion | null>(null);
   const [attempts, setAttempts] = useState(0);
 
-  const [angelChat, setAngelChat] = useState("Greetings, Traveler! Before you take a single step, you must decode the riddle above. Click the scroll on the left to begin!");
+  const [angelChat, setAngelChat] = useState(`Greetings, ${displayName || 'Traveler'}! Before you take a single step, you must decode the riddle above. Click the scroll on the left to begin!`);
   const [askInput, setAskInput] = useState("");
   const [chatLog, setChatLog] = useState<ChatMessage[]>([]);
   const [isThinking, setIsThinking] = useState(false);
@@ -59,7 +59,7 @@ export default function CrossroadsScene({ onComplete }: { onComplete?: () => voi
     setActiveComprehensionQuestion(dynamicComprehensionQuestion);
 
     const explanationInstructions = `
-      The player is learning about ${conceptName}. Attempt number ${currentAttemptIndex + 1}.
+      The ${displayName || 'Traveler'} is learning about ${conceptName}. Attempt number ${currentAttemptIndex + 1}.
       ${remedialPrompt ? `REMEDIAL: The child answered incorrectly. ${remedialPrompt} Pivot to why the correct choice was right. End by asking: "${dynamicComprehensionQuestion}"` : `INTRO: Explain "Pistis" (active trust) using this analogy: "${chosenMetaphor}".`}
       Keep the entire message warm and brief (maximum 3 sentences).
     `;
@@ -82,7 +82,7 @@ export default function CrossroadsScene({ onComplete }: { onComplete?: () => voi
     setExplanationAccepted(false);
     setVerificationState('none');
     setAttempts(0);
-    setAngelChat("Hold on, Traveler! To unlock this chest, we must first learn what Faith truly is. Let me teach you...");
+    setAngelChat(`Hold on, ${displayName || 'Traveler'}! To unlock this chest, we must first learn what Faith truly is. Let me teach you...`);
     await loadQuestionAndExplanation("", 0);
   };
 
