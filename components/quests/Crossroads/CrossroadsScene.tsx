@@ -22,7 +22,7 @@ interface DynamicQuestion {
 
 export default function CrossroadsScene({ onComplete }: { onComplete?: () => void }) {
   // 1. NEW: Grab verseChunks from useGame!
-  const { setCurrentScreen, verseChunks } = useGame();
+  const { setCurrentScreen, verseChunks, characterPath } = useGame();
 
   const [stageState, setStageState] = useState('riddle-intro');
   const [explanationAccepted, setExplanationAccepted] = useState(false);
@@ -38,8 +38,6 @@ export default function CrossroadsScene({ onComplete }: { onComplete?: () => voi
   const [isThinking, setIsThinking] = useState(false);
   const [challengeFeedback, setChallengeFeedback] = useState("");
 
-  const [selectedGender] = useState<'girl' | 'boy'>('girl');
-  const characterPath = selectedGender === 'girl' ? "/characters/girlnobackground.png" : "/characters/boynobackground.png";
 
   const loadQuestionAndExplanation = async (remedialPrompt: string = "", currentAttemptIndex: number) => {
     setIsThinking(true);

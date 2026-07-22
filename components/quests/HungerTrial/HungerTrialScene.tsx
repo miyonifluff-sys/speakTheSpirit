@@ -21,7 +21,7 @@ interface DynamicQuestion {
 }
 
 export default function HungerTrialScene({ onComplete }: { onComplete?: () => void }) {
-  const { setCurrentScreen } = useGame();
+  const { setCurrentScreen, characterPath } = useGame();
 
   const [stageState, setStageState] = useState('riddle-intro');
   const [selectedAction, setSelectedAction] = useState<'fishing' | 'fruit' | null>(null);
@@ -38,8 +38,6 @@ export default function HungerTrialScene({ onComplete }: { onComplete?: () => vo
   const [isThinking, setIsThinking] = useState(false);
   const [challengeFeedback, setChallengeFeedback] = useState("");
 
-  const [selectedGender] = useState<'girl' | 'boy'>('girl');
-  const characterPath = selectedGender === 'girl' ? "/characters/girlnobackground.png" : "/characters/boynobackground.png";
 
   const { verseChunks } = useGame();
 

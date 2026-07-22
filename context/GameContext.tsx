@@ -29,6 +29,10 @@ interface GameContextType {
   verseChunks: string[];
   setVerseChunks: (chunks: string[]) => void;
 
+  //avatar tracking
+  avatarUrl: string | null;
+  characterPath: string;
+
   // Game Logic State
   introStep: number;
   setIntroStep: (step: number) => void;
@@ -120,6 +124,15 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   // Progression
   const [clearedIslands, setClearedIslands] = useState<string[]>([]);
 
+  // 👤 NEW: State for the avatar URL from Supabase
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
+  // 👤 NEW: Derived character path for your 2D sprites!
+  // Defaults to girlnobackground if NULL or not set to boy
+  const characterPath = avatarUrl?.includes('boy') 
+    ? "/characters/boynobackground.png" 
+    : "/characters/girlnobackground.png";
+
   // Visual / Feedback State
   const [feedback, setFeedback] = useState<string>('');
   const [shakeTrigger, setShakeTrigger] = useState<boolean>(false);
@@ -196,6 +209,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         setCucumbersState(profile.cucumbers ?? 5);
         setTicketsState(profile.tickets ?? 1);
         
+        // 👤 NEW: Save the avatar URL from the database
+        setAvatarUrl(profile.avatar_url || null);
+
         const loadedIslands = profile.clearedIslands || [];
         setClearedIslands(loadedIslands);
         
@@ -454,6 +470,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         handleBattleAnswer,
         handleUseSwordOfTruth,
         handleTriggerPortal,
+
+        avatarUrl,      // 👈 NEW
+        characterPath,  // 👈 NEW
       }}
     >
       {children}

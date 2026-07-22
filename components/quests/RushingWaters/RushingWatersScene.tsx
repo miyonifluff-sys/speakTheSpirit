@@ -21,11 +21,9 @@ interface DynamicQuestion {
 }
 
 export default function RushingWatersScene({ onComplete }: { onComplete?: () => void }) {
-  const { setCurrentScreen } = useGame();
+  const { setCurrentScreen, characterPath } = useGame();
 
   const [stageState, setStageState] = useState('riddle-intro');
-  const [selectedGender] = useState<'girl' | 'boy'>('girl');
-  const characterPath = selectedGender === 'girl' ? "/characters/girlnobackground.png" : "/characters/boynobackground.png";
 
   // 🧠 AI & GLOO STATES
   const [explanationAccepted, setExplanationAccepted] = useState(false);
