@@ -29,6 +29,8 @@ export default function HungerTrialStage({
   // 🚶‍♂️ 2D WALKING STATE 
   const [playerPos, setPlayerPos] = useState({ x: 103, y: 560 });
   const playerSpeed = 10;
+  // Put this near your other state variables at the top of the component
+  const [facing, setFacing] = useState<'left' | 'right'>('right');
 
  const hungerWaypoints = [
     { x: 79, y: 564 }, { x: 156, y: 569 }, { x: 212, y: 522 }, { x: 212, y: 522 }, { x: 152, y: 504 }, { x: 266, y: 470 }, { x: 207, y: 480 }, { x: 199, y: 568 }, { x: 339, y: 491 }, { x: 417, y: 499 }, { x: 478, y: 498 }, { x: 544, y: 497 }, { x: 599, y: 456 }, { x: 574, y: 414 }, { x: 516, y: 371 }, { x: 456, y: 373 }, { x: 372, y: 354 }, { x: 299, y: 346 }, { x: 252, y: 333 }, { x: 233, y: 279 }, { x: 303, y: 275 }, { x: 353, y: 269 }, { x: 431, y: 290 }, { x: 497, y: 296 }, { x: 560, y: 285 }, { x: 569, y: 215 }, { x: 505, y: 200 }, { x: 428, y: 204 }, { x: 366, y: 199 }, { x: 308, y: 186 }, { x: 296, y: 166 }, { x: 360, y: 154 }, { x: 407, y: 142 }, { x: 359, y: 116 }, { x: 395, y: 72 }, { x: 115, y: 520 }
@@ -75,6 +77,8 @@ export default function HungerTrialStage({
     setPlayerPos((prev) => {
       const targetX = prev.x + dx;
       const targetY = prev.y + dy;
+      if (dx < 0) setFacing('left');
+      if (dx > 0) setFacing('right');
       if (targetX < 0 || targetX > 800 || targetY < 0 || targetY > 600) return prev;
       if (isPositionOnPath(targetX, targetY)) return { x: targetX, y: targetY };
       return prev;
@@ -229,7 +233,7 @@ export default function HungerTrialStage({
                   <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-black" />
                 </div>
               )}
-              <img src={characterPath} alt="Character" className="w-full h-full object-contain drop-shadow-[0_10px_8px_rgba(0,0,0,0.5)]" />
+              <img src={characterPath} alt="Character" className="w-full h-full object-contain drop-shadow-[0_10px_8px_rgba(0,0,0,0.5)]" style={{ transform: facing === 'left' ? 'scaleX(-1)' : 'scaleX(1)' }}/>
             </div>
 
             <div className="absolute bottom-4 right-4 flex flex-col items-center gap-1 bg-slate-950 p-3 rounded-full border-4 border-black shadow-[0_4px_0_#000] z-30 opacity-80 hover:opacity-100 transition-opacity">

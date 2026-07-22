@@ -28,6 +28,8 @@ export default function RushingWatersStage({
   const [bridgeRevealed, setBridgeRevealed] = useState(false);
   const [sinkMessage, setSinkMessage] = useState("");
   const playerSpeed = 15;
+  // Put this near your other state variables at the top of the component
+  const [facing, setFacing] = useState<'left' | 'right'>('right');
 
   // 🌍 SPAWN POINTS
   useEffect(() => {
@@ -41,7 +43,9 @@ export default function RushingWatersStage({
     setPlayerPos((prev) => {
       let targetX = prev.x + dx;
       let targetY = prev.y + dy;
-      
+      // 👈 ADD THESE TWO LINES HERE
+      if (dx < 0) setFacing('left');
+      if (dx > 0) setFacing('right');
       // Screen Boundaries
       if (targetX < 0) targetX = 0;
       if (targetX > 750) targetX = 750;
@@ -188,7 +192,7 @@ export default function RushingWatersStage({
               className="absolute w-24 h-24 -translate-x-1/2 -translate-y-[80%] transition-all duration-75 ease-out z-20 pointer-events-none"
               style={{ left: `${playerPos.x}px`, top: `${playerPos.y}px` }}
             >
-              <img src={characterPath} alt="Character" className="w-full h-full object-contain drop-shadow-[0_10px_8px_rgba(0,0,0,0.5)]" />
+              <img src={characterPath} alt="Character" className="w-full h-full object-contain drop-shadow-[0_10px_8px_rgba(0,0,0,0.5)]" style={{ transform: facing === 'left' ? 'scaleX(-1)' : 'scaleX(1)' }} />
             </div>
 
             {/* On-Screen D-Pad */}
