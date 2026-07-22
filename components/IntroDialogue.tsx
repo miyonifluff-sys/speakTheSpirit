@@ -15,7 +15,7 @@ export default function IntroDialogue() {
 
   const handleEnterOverworld = () => {
     addLog("Entered the Overworld Map. The quest for the Songbeasts begins!", "system");
-    setCurrentScreen('OVERWORLD');
+    setCurrentScreen('QUEST');
   };
 
   return (
@@ -31,7 +31,7 @@ export default function IntroDialogue() {
           <span className="text-red-400 font-black tracking-widest uppercase text-xs">Phase 1: Cinematic Introduction</span>
           <button 
             onClick={() => {
-              setCurrentScreen('OVERWORLD');
+              setCurrentScreen('QUEST');
               addLog("Skipped introduction sequence.", "system");
             }} 
             className="bg-slate-700 text-slate-300 hover:text-white px-2.5 py-1 text-xs font-bold rounded border border-black"
@@ -75,7 +75,7 @@ export default function IntroDialogue() {
             onClick={handleEnterOverworld}
             className="bg-green-500 text-white font-black uppercase text-sm px-6 py-3 rounded-xl neo-btn"
           >
-            Enter the Overworld Map 🗺️
+            Begin Quest!
           </button>
         )}
       </div>
