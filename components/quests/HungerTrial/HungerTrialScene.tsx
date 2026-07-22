@@ -21,7 +21,7 @@ interface DynamicQuestion {
 }
 
 export default function HungerTrialScene({ onComplete }: { onComplete?: () => void }) {
-  const { setCurrentScreen, characterPath, displayName } = useGame();
+  const { setCurrentScreen, characterPath, displayName, gradeLevel } = useGame();
 
   const [stageState, setStageState] = useState('riddle-intro');
   const [selectedAction, setSelectedAction] = useState<'fishing' | 'fruit' | null>(null);
@@ -38,6 +38,15 @@ export default function HungerTrialScene({ onComplete }: { onComplete?: () => vo
   const [isThinking, setIsThinking] = useState(false);
   const [challengeFeedback, setChallengeFeedback] = useState("");
 
+  const handleSpeak = () => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel(); 
+      const utterance = new SpeechSynthesisUtterance(angelChat);
+      utterance.rate = 0.9;  
+      utterance.pitch = 1.2; 
+      window.speechSynthesis.speak(utterance);
+    }
+  };
 
   const { verseChunks } = useGame();
 
@@ -45,6 +54,36 @@ export default function HungerTrialScene({ onComplete }: { onComplete?: () => vo
   const loadQuestionAndExplanation = async (remedialPrompt: string = "", currentAttemptIndex: number) => {
     setIsThinking(true);
     
+    // 🌟 TK-1ST GRADE / RETRY OVERRIDE
+    if (gradeLevel?.toLowerCase().includes('tk') || currentAttemptIndex >= 1) {
+      setActiveComprehensionQuestion("Does God care about us?");
+      setAngelChat(remedialPrompt 
+        ? "Not quite! Let's try an easier one. Does God care about us?" 
+        : "Assurance means knowing God loves us! Does God care about us?");
+      setCurrentQuestion({
+        question: "Does God care about us?",
+        optionA: "Yes",
+        optionB: "No",
+        correctOption: "A"
+      });
+      setIsThinking(false);
+      return; 
+    }
+
+    // 🌟 2. 2ND-3RD GRADE OVERRIDE (NEW!)
+    if (gradeLevel?.toLowerCase().includes('2') || gradeLevel?.toLowerCase().includes('3')) {
+      setActiveComprehensionQuestion("Does God provide for us?");
+      setAngelChat("Assurance means knowing God will meet our needs! Fill in the blank.");
+      setCurrentQuestion({
+        question: "God ________ about our needs.",
+        optionA: "doesn't care",
+        optionB: "provides",
+        correctOption: "B"
+      });
+      setIsThinking(false);
+      return; 
+    }
+
     // Updated Curriculum: Focusing strictly on ASSURANCE
     const conceptName = "Assurance (Hypostasis)";
     const correctRule = "Having a guaranteed, confident expectation that the Gardener will provide, even before you see the proof.";
@@ -149,7 +188,18 @@ export default function HungerTrialScene({ onComplete }: { onComplete?: () => vo
               {stageState === 'solved' ? `${verseChunks[0]} ${verseChunks[1]}` : `${verseChunks[0]}` + " [ _ _ _ _ _ ]"}
             </p>
           </div>
-        </div>
+          <div className="flex gap-2">
+            {/* 🔊 THE NEW AUDIO BUTTON */}
+            <button 
+              onClick={handleSpeak}
+              className="bg-blue-500 hover:bg-blue-400 text-white font-bold py-1 px-3 rounded text-xs border border-black shadow-[1px_1px_0px_#000]"
+            >
+              🔊 Read Aloud
+            </button>
+            </div>
+            </div>
+
+        
 
         {/* 🗺️ RENDER VISUAL STAGE OR LOCK CHALLENGE */}
         {(stageState !== 'lock-challenge') ? (
@@ -217,6 +267,7 @@ export default function HungerTrialScene({ onComplete }: { onComplete?: () => vo
           </div>
         )}
       </div>
+  
 
       {/* 🔵 RIGHT SIDE: ANGEL CONSOLE */}
       <AngelConsole 

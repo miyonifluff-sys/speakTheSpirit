@@ -21,7 +21,7 @@ interface DynamicQuestion {
 }
 
 export default function RushingWatersScene({ onComplete }: { onComplete?: () => void }) {
-  const { setCurrentScreen, characterPath } = useGame();
+  const { setCurrentScreen, characterPath, gradeLevel } = useGame();
 
   const [stageState, setStageState] = useState('riddle-intro');
 
@@ -38,11 +38,52 @@ export default function RushingWatersScene({ onComplete }: { onComplete?: () => 
   const [isThinking, setIsThinking] = useState(false);
   const [challengeFeedback, setChallengeFeedback] = useState("");
 
+  // 2. ADD THE TTS FUNCTION HERE
+  const handleSpeak = () => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel(); 
+      const utterance = new SpeechSynthesisUtterance(angelChat);
+      utterance.rate = 0.9;  
+      utterance.pitch = 1.2; 
+      window.speechSynthesis.speak(utterance);
+    }
+  };
+
   const { verseChunks } = useGame();
 
   const loadQuestionAndExplanation = async (remedialPrompt: string = "", currentAttemptIndex: number) => {
     setIsThinking(true);
     
+    // 🌟 TK-1ST GRADE / RETRY OVERRIDE
+    if (gradeLevel?.toLowerCase().includes('tk') || currentAttemptIndex >= 1) {
+      setActiveComprehensionQuestion("Can we always see God?");
+      setAngelChat(remedialPrompt 
+        ? "Not quite! Let's think about this. Can we always see God with our eyes?" 
+        : "We can have confidence even when we can't see Him! Can we always see God?");
+      setCurrentQuestion({
+        question: "Can we always see God with our eyes?",
+        optionA: "No",
+        optionB: "Yes",
+        correctOption: "A" // "No" is the correct answer here!
+      });
+      setIsThinking(false);
+      return; 
+    }
+
+    // 🌟 2. 2ND-3RD GRADE OVERRIDE (NEW!)
+    if (gradeLevel?.toLowerCase().includes('2') || gradeLevel?.toLowerCase().includes('3')) {
+      setActiveComprehensionQuestion("Do we need to see God to trust Him?");
+      setAngelChat("We can have confidence even when we can't see Him! Fill in the blank.");
+      setCurrentQuestion({
+        question: "We can trust God even when we ________ see Him.",
+        optionA: "cannot",
+        optionB: "can",
+        correctOption: "A"
+      });
+      setIsThinking(false);
+      return; 
+    }
+
     const conceptName = "Trusting in things not seen.";
     const correctRule = "Trusting in the Gardener and His promises, even when your eyes see absolutely nothing.";
     const incorrectRule = "Trusting only in your own physical sight, tools, and abilities to make a bridge or boat.";
@@ -145,7 +186,18 @@ export default function RushingWatersScene({ onComplete }: { onComplete?: () => 
               {stageState === 'solved' ? `${verseChunks[0]} ${verseChunks[1]} ${verseChunks[2]}` : `${verseChunks[0]} ${verseChunks[1]}` + " [ _ _ _ _ _ ]"}
             </p>
           </div>
+          <div className="flex gap-2">
+            {/* 🔊 THE NEW AUDIO BUTTON */}
+            <button 
+              onClick={handleSpeak}
+              className="bg-blue-500 hover:bg-blue-400 text-white font-bold py-1 px-3 rounded text-xs border border-black shadow-[1px_1px_0px_#000]"
+            >
+              🔊 Read Aloud
+            </button>
         </div>
+        </div>
+
+        
 
         {/* 🗺️ RENDER VISUAL STAGE OR LOCK CHALLENGE */}
         {(stageState !== 'lock-challenge') ? (
@@ -201,6 +253,7 @@ export default function RushingWatersScene({ onComplete }: { onComplete?: () => 
           </div>
         )}
       </div>
+
 
       {/* 🔵 RIGHT SIDE: ANGEL CONSOLE */}
       <AngelConsole 

@@ -33,6 +33,7 @@ interface GameContextType {
   avatarUrl: string | null;
   characterPath: string;
   displayName: string | null;
+  gradeLevel: string | null;
 
   // Game Logic State
   introStep: number;
@@ -128,6 +129,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   // 👤 NEW: State for the avatar URL from Supabase
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null); // 👈 NEW
+  const [gradeLevel, setGradeLevel] = useState<string | null>(null);
 
   // 👤 NEW: Derived character path for your 2D sprites!
   // Defaults to girlnobackground if NULL or not set to boy
@@ -214,6 +216,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         // 👤 NEW: Save the avatar URL from the database
         setAvatarUrl(profile.avatar_url || null);
         setDisplayName (profile.display_name || 'Traveler'); //new
+        setGradeLevel(profile.grade_level || null);
 
         const loadedIslands = profile.clearedIslands || [];
         setClearedIslands(loadedIslands);
@@ -477,6 +480,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         avatarUrl,      // 👈 NEW
         characterPath,  // 👈 NEW
         displayName,
+        gradeLevel,
       }}
     >
       {children}

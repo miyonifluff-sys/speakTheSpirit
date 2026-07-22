@@ -288,8 +288,8 @@ export default function OnboardingFlow() {
                 { value: 'TK', label: 'TK' },
                 { value: 'K', label: 'Kindergarten' },
                 ...[...Array(12)].map((_, i) => ({
-                  value: `${i + 1}th`,
-                  label: `${i + 1}th Grade`
+                  value: `${i + 1}`,
+                  label: `Grade ${i + 1}`
                 })),
                 { value: 'Adult', label: 'Adult / Parent' } // Moved to the very end of the array!
               ].map((grade) => (

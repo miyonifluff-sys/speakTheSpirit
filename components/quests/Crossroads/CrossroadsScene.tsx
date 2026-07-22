@@ -22,7 +22,7 @@ interface DynamicQuestion {
 
 export default function CrossroadsScene({ onComplete }: { onComplete?: () => void }) {
   // 1. NEW: Grab verseChunks from useGame!
-  const { setCurrentScreen, verseChunks, characterPath, displayName } = useGame();
+  const { setCurrentScreen, verseChunks, characterPath, displayName, gradeLevel } = useGame();
 
   const [stageState, setStageState] = useState('riddle-intro');
   const [explanationAccepted, setExplanationAccepted] = useState(false);
@@ -38,9 +38,47 @@ export default function CrossroadsScene({ onComplete }: { onComplete?: () => voi
   const [isThinking, setIsThinking] = useState(false);
   const [challengeFeedback, setChallengeFeedback] = useState("");
 
+  // 2. ADD THE TTS FUNCTION HERE
+  const handleSpeak = () => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel(); 
+      const utterance = new SpeechSynthesisUtterance(angelChat);
+      utterance.rate = 0.9;  
+      utterance.pitch = 1.2; 
+      window.speechSynthesis.speak(utterance);
+    }
+  };
 
   const loadQuestionAndExplanation = async (remedialPrompt: string = "", currentAttemptIndex: number) => {
     setIsThinking(true);
+    
+    if (gradeLevel?.toLowerCase().includes('tk') || currentAttemptIndex >= 1) {
+      setActiveComprehensionQuestion("Do we trust God?");
+      setAngelChat(remedialPrompt ? "Not quite! Let's try an easier one. Do we trust God?" : "Faith means trusting God! Do we trust God?");
+      setCurrentQuestion({
+        question: "Do we trust God?",
+        optionA: "Yes",
+        optionB: "No",
+        correctOption: "A"
+      });
+      setIsThinking(false);
+      return; 
+    }
+
+    // 🌟 2. 2ND-3RD GRADE OVERRIDE (NEW!)
+    if (gradeLevel?.toLowerCase().includes('2') || gradeLevel?.toLowerCase().includes('3')) {
+      setActiveComprehensionQuestion("What is faith?");
+      setAngelChat("Faith is active trust! Let's see if you can fill in the blank.");
+      setCurrentQuestion({
+        question: "Faith is ________.",
+        optionA: "trust",
+        optionB: "cool",
+        correctOption: "A"
+      });
+      setIsThinking(false);
+      return; 
+    }
+
     const conceptName = "Faith";
     const correctRule = "Active loyalty, deep trust, and doing what the Gardener says (taking action).";
     const incorrectRule = "Just memorizing lists of facts and trivia about the Gardener, or passive head-knowledge without movement.";
@@ -182,11 +220,22 @@ export default function CrossroadsScene({ onComplete }: { onComplete?: () => voi
               {stageState === 'solved' ? `${verseChunks[0] || "Forging..."}` : "[ _ _ _ _ _ ]"}
             </p>
           </div>
+
+          <div className="flex gap-2">
+            {/* 🔊 THE NEW AUDIO BUTTON */}
+            <button 
+              onClick={handleSpeak}
+              className="bg-blue-500 hover:bg-blue-400 text-white font-bold py-1 px-3 rounded text-xs border border-black shadow-[1px_1px_0px_#000]"
+            >
+              🔊 Read Aloud
+            </button>
+            
           {stageState === 'lock-challenge' && (
             <div className="flex items-center gap-2 bg-slate-900 px-3 py-1 border border-black rounded">
               <span className="text-xl">🔒</span><span className="text-[10px] font-black uppercase text-amber-400">Lock Puzzle</span>
             </div>
           )}
+        </div>
         </div>
 
         {/* SCENE RENDERING AREA */}
