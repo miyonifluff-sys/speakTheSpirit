@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useGame } from '../../../context/GameContext';
 import { addLog } from '../../../utils/gameEvents';
 import { askAngelGabriel, generateAdaptiveQuestion, verifyComprehension } from '../../../app/actions/gloo';
@@ -21,11 +21,13 @@ interface DynamicQuestion {
 }
 
 export default function RushingWatersScene({ onComplete }: { onComplete?: () => void }) {
-  const { setCurrentScreen } = useGame();
+  const { setCurrentScreen, characterPath, gradeLevel, setCurrentTrack } = useGame();
 
   const [stageState, setStageState] = useState('riddle-intro');
-  const [selectedGender] = useState<'girl' | 'boy'>('girl');
-  const characterPath = selectedGender === 'girl' ? "/characters/girlnobackground.png" : "/characters/boynobackground.png";
+
+  useEffect(() => {
+    setCurrentTrack('/audio/waters.mp3');
+  }, [setCurrentTrack]);
 
   // 🧠 AI & GLOO STATES
   const [explanationAccepted, setExplanationAccepted] = useState(false);
@@ -40,16 +42,59 @@ export default function RushingWatersScene({ onComplete }: { onComplete?: () => 
   const [isThinking, setIsThinking] = useState(false);
   const [challengeFeedback, setChallengeFeedback] = useState("");
 
+  // 2. ADD THE TTS FUNCTION HERE
+  const handleSpeak = () => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel(); 
+      const utterance = new SpeechSynthesisUtterance(angelChat);
+      utterance.rate = 0.9;  
+      utterance.pitch = 1.2; 
+      window.speechSynthesis.speak(utterance);
+    }
+  };
+
+  const { verseChunks } = useGame();
+
   const loadQuestionAndExplanation = async (remedialPrompt: string = "", currentAttemptIndex: number) => {
     setIsThinking(true);
     
-    const conceptName = "Conviction (Elenchos)";
+    // 🌟 TK-1ST GRADE / RETRY OVERRIDE
+    if (gradeLevel?.toLowerCase().includes('tk') || currentAttemptIndex >= 1) {
+      setActiveComprehensionQuestion("Can we always see God?");
+      setAngelChat(remedialPrompt 
+        ? "Not quite! Let's think about this. Can we always see God with our eyes?" 
+        : "We can have confidence even when we can't see Him! Can we always see God?");
+      setCurrentQuestion({
+        question: "Can we always see God with our eyes?",
+        optionA: "No",
+        optionB: "Yes",
+        correctOption: "A" // "No" is the correct answer here!
+      });
+      setIsThinking(false);
+      return; 
+    }
+
+    // 🌟 2. 2ND-3RD GRADE OVERRIDE (NEW!)
+    if (gradeLevel?.toLowerCase().includes('2') || gradeLevel?.toLowerCase().includes('3')) {
+      setActiveComprehensionQuestion("Do we need to see God to trust Him?");
+      setAngelChat("We can have confidence even when we can't see Him! Fill in the blank.");
+      setCurrentQuestion({
+        question: "We can trust God even when we ________ see Him.",
+        optionA: "cannot",
+        optionB: "can",
+        correctOption: "A"
+      });
+      setIsThinking(false);
+      return; 
+    }
+
+    const conceptName = "Trusting in things not seen.";
     const correctRule = "Trusting in the Gardener and His promises, even when your eyes see absolutely nothing.";
     const incorrectRule = "Trusting only in your own physical sight, tools, and abilities to make a bridge or boat.";
 
     const metaphors = [
-      "Conviction means trusting in things not seen! Just like gravity or a radio frequency, just because you can't see it doesn't mean it isn't real and holding you up.",
-      "In ancient courts, an 'elenchos' was undeniable proof. The Gardener's character is our proof, even when the river looks scary!",
+      "Sometimes you have faith in things you can't actually see with your eyes! Just like gravity or a radio frequency, just because you can't see it doesn't mean it isn't real and holding you up.",
+      "We can be sure something esists without seeing it physically. The Gardener's character is our proof, even when the river looks scary!",
     ];
     
     const chosenMetaphor = metaphors[currentAttemptIndex % metaphors.length];
@@ -62,7 +107,7 @@ export default function RushingWatersScene({ onComplete }: { onComplete?: () => 
     const explanationInstructions = `
       The player is learning about "${conceptName}". Attempt number ${currentAttemptIndex + 1}.
       They just crossed a rushing river on an invisible bridge.
-      ${remedialPrompt ? `REMEDIAL: ${remedialPrompt} End by asking: "${dynamicComprehensionQuestion}"` : `INTRO: Explain the concept of Conviction (Elenchos) and 'things not seen' using this analogy: "${chosenMetaphor}".`}
+      ${remedialPrompt ? `REMEDIAL: ${remedialPrompt} End by asking: "${dynamicComprehensionQuestion}"` : `INTRO: Explain the concept of 'things not seen' using this analogy: "${chosenMetaphor}".`}
       Keep the entire message warm and brief (maximum 3 sentences).
     `;
 
@@ -85,7 +130,7 @@ export default function RushingWatersScene({ onComplete }: { onComplete?: () => 
 
     if (selectedOption === currentQuestion.correctOption) {
       setStageState('solved');
-      addLog("Mastered the Conviction concept!", "system");
+      addLog("Mastered 'things not seen' concept!", "system");
       setIsThinking(true);
       try {
         const res = await askAngelGabriel("user_123", "Explain why my correct answer was right!", `Player chose: "${chosenText}". Celebrate briefly and mention we are ready to battle the silencer.`);
@@ -114,7 +159,7 @@ export default function RushingWatersScene({ onComplete }: { onComplete?: () => 
 
     if (verificationState === 'pending-chat') {
       try {
-        const res = await verifyComprehension("user_123", activeComprehensionQuestion, currentQuestionText, "Conviction means acting on the unseen realities promised by the Gardener.");
+        const res = await verifyComprehension("user_123", activeComprehensionQuestion, currentQuestionText, "Conviction/Assurance means acting on the unseen realities promised by the Gardener.");
         if (res.evaluation) {
           setChatLog(prev => [...prev, { sender: 'angel', text: res.evaluation.reply }]);
           if (res.evaluation.isUnderstood) {
@@ -142,10 +187,21 @@ export default function RushingWatersScene({ onComplete }: { onComplete?: () => 
           <div>
             <h3 className="text-[10px] font-black uppercase text-amber-400">Weapon Tracker</h3>
             <p className="text-xs font-bold text-slate-200">
-              {stageState === 'solved' ? "Now faith is the assurance of things hoped for, the conviction of things not seen." : "Now faith is the assurance of things hoped for... [ _ _ _ _ _ ]"}
+              {stageState === 'solved' ? `${verseChunks[0]} ${verseChunks[1]} ${verseChunks[2]}` : `${verseChunks[0]} ${verseChunks[1]}` + " [ _ _ _ _ _ ]"}
             </p>
           </div>
+          <div className="flex gap-2">
+            {/* 🔊 THE NEW AUDIO BUTTON */}
+            <button 
+              onClick={handleSpeak}
+              className="bg-blue-500 hover:bg-blue-400 text-white font-bold py-1 px-3 rounded text-xs border border-black shadow-[1px_1px_0px_#000]"
+            >
+              🔊 Read Aloud
+            </button>
         </div>
+        </div>
+
+        
 
         {/* 🗺️ RENDER VISUAL STAGE OR LOCK CHALLENGE */}
         {(stageState !== 'lock-challenge') ? (
@@ -166,6 +222,7 @@ export default function RushingWatersScene({ onComplete }: { onComplete?: () => 
             }}
             onOpenChest={async () => {
               setStageState('lock-challenge');
+              setCurrentTrack('/audio/question.mp3');
               setExplanationAccepted(false);
               setVerificationState('none');
               setAttempts(0);
@@ -201,6 +258,7 @@ export default function RushingWatersScene({ onComplete }: { onComplete?: () => 
           </div>
         )}
       </div>
+
 
       {/* 🔵 RIGHT SIDE: ANGEL CONSOLE */}
       <AngelConsole 

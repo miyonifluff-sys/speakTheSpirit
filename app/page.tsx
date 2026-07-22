@@ -13,6 +13,7 @@ import Debrief from '../components/Debrief';
 import BasecampShop from '../components/BasecampShop';
 import OnboardingFlow from '../components/OnboardingFlow';
 import { supabase } from '../services/supabaseService';
+import BackgroundMusic from '../components/BackgroundMusic';
 
 function GameContent() {
   const { 
@@ -106,6 +107,9 @@ function GameContent() {
 
   return (
     <div className="w-screen h-screen max-h-screen flex flex-col overflow-hidden p-0 m-0 bg-slate-950 text-slate-100 font-mono selection:bg-yellow-400 selection:text-black">
+
+      <BackgroundMusic />
+      
       <GameHeader />
       <main className="flex-1 w-full p-6 overflow-y-auto bg-slate-800 rounded-none neo-box relative overflow-hidden">
         {isTransactionPending && renderLoadingScreen()}
@@ -124,3 +128,5 @@ export default function Home() {
     </React.Suspense>
   );
 }
+
+

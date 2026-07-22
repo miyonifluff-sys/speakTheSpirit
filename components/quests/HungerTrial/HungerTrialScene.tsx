@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useGame } from '../../../context/GameContext';
 import { addLog } from '../../../utils/gameEvents';
 import { askAngelGabriel, generateAdaptiveQuestion, verifyComprehension } from '../../../app/actions/gloo';
@@ -21,7 +21,12 @@ interface DynamicQuestion {
 }
 
 export default function HungerTrialScene({ onComplete }: { onComplete?: () => void }) {
-  const { setCurrentScreen } = useGame();
+  const { setCurrentScreen, characterPath, displayName, gradeLevel, setCurrentTrack } = useGame();
+
+  //change music when they enter the desert
+  useEffect(() => {
+    setCurrentTrack('/audio/hunger.mp3');
+  }, [setCurrentTrack]);
 
   const [stageState, setStageState] = useState('riddle-intro');
   const [selectedAction, setSelectedAction] = useState<'fishing' | 'fruit' | null>(null);
@@ -32,26 +37,67 @@ export default function HungerTrialScene({ onComplete }: { onComplete?: () => vo
   const [activeComprehensionQuestion, setActiveComprehensionQuestion] = useState("");
   const [currentQuestion, setCurrentQuestion] = useState<DynamicQuestion | null>(null);
   const [attempts, setAttempts] = useState(0);
-  const [angelChat, setAngelChat] = useState("Traveler, your stomach may rumble, but true provision comes to those who seek it. Read the riddle!");
+  const [angelChat, setAngelChat] = useState(`${displayName || 'Traveler'}, your stomach may rumble, but true provision comes to those who seek it. Read the riddle!`);
   const [askInput, setAskInput] = useState("");
   const [chatLog, setChatLog] = useState<ChatMessage[]>([]);
   const [isThinking, setIsThinking] = useState(false);
   const [challengeFeedback, setChallengeFeedback] = useState("");
 
-  const [selectedGender] = useState<'girl' | 'boy'>('girl');
-  const characterPath = selectedGender === 'girl' ? "/characters/girlnobackground.png" : "/characters/boynobackground.png";
+  const handleSpeak = () => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel(); 
+      const utterance = new SpeechSynthesisUtterance(angelChat);
+      utterance.rate = 0.9;  
+      utterance.pitch = 1.2; 
+      window.speechSynthesis.speak(utterance);
+    }
+  };
+
+  const { verseChunks } = useGame();
+
 
   const loadQuestionAndExplanation = async (remedialPrompt: string = "", currentAttemptIndex: number) => {
     setIsThinking(true);
     
+    // 🌟 TK-1ST GRADE / RETRY OVERRIDE
+    if (gradeLevel?.toLowerCase().includes('tk') || currentAttemptIndex >= 1) {
+      setActiveComprehensionQuestion("Does God care about us?");
+      setAngelChat(remedialPrompt 
+        ? "Not quite! Let's try an easier one. Does God care about us?" 
+        : "Assurance means knowing God loves us! Does God care about us?");
+      setCurrentQuestion({
+        question: "Does God care about us?",
+        optionA: "Yes",
+        optionB: "No",
+        correctOption: "A"
+      });
+      setIsThinking(false);
+      return; 
+    }
+
+    // 🌟 2. 2ND-3RD GRADE OVERRIDE (NEW!)
+    if (gradeLevel?.toLowerCase().includes('2') || gradeLevel?.toLowerCase().includes('3')) {
+      setActiveComprehensionQuestion("Does God provide for us?");
+      setAngelChat("Assurance means knowing God will meet our needs! Fill in the blank.");
+      setCurrentQuestion({
+        question: "God ________ about our needs.",
+        optionA: "doesn't care",
+        optionB: "cares",
+        correctOption: "B"
+      });
+      setIsThinking(false);
+      return; 
+    }
+
     // Updated Curriculum: Focusing strictly on ASSURANCE
     const conceptName = "Assurance (Hypostasis)";
     const correctRule = "Having a guaranteed, confident expectation that the Gardener will provide, even before you see the proof.";
     const incorrectRule = "Refusing to trust the Gardener until you physically see the food, or scrambling around anxiously.";
 
     const metaphors = [
-      "Assurance is like holding a title deed to a house. You don't need to be standing inside the house to know it's yours!",
-      "Assurance is an eager, confident expectation. It's like going to sleep completely certain the sun will rise tomorrow.",
+        "Assurance is like having a birthday invitation from a friend. Even if it's days away, you are completely sure the party is happening!",
+        "Assurance is like holding a ticket to a fun theme park. Even if you are standing outside the gates, you know that ride is yours to enjoy!",
+        "Assurance is an eager, confident expectation. It's like going to sleep completely certain the sun will rise tomorrow.",
     ];
     
     const chosenMetaphor = metaphors[currentAttemptIndex % metaphors.length];
@@ -144,10 +190,21 @@ export default function HungerTrialScene({ onComplete }: { onComplete?: () => vo
           <div>
             <h3 className="text-[10px] font-black uppercase text-amber-400">Weapon Tracker</h3>
             <p className="text-xs font-bold text-slate-200">
-              {stageState === 'solved' ? "Now faith is the assurance of things hoped for..." : "Now faith is [ _ _ _ _ _ ]"}
+              {stageState === 'solved' ? `${verseChunks[0]} ${verseChunks[1]}` : `${verseChunks[0]}` + " [ _ _ _ _ _ ]"}
             </p>
           </div>
-        </div>
+          <div className="flex gap-2">
+            {/* 🔊 THE NEW AUDIO BUTTON */}
+            <button 
+              onClick={handleSpeak}
+              className="bg-blue-500 hover:bg-blue-400 text-white font-bold py-1 px-3 rounded text-xs border border-black shadow-[1px_1px_0px_#000]"
+            >
+              🔊 Read Aloud
+            </button>
+            </div>
+            </div>
+
+        
 
         {/* 🗺️ RENDER VISUAL STAGE OR LOCK CHALLENGE */}
         {(stageState !== 'lock-challenge') ? (
@@ -172,6 +229,7 @@ export default function HungerTrialScene({ onComplete }: { onComplete?: () => vo
               // 🔄 Dynamic router check added here to control the map-to-scroll transitions safely:
               if (stageState === 'chest-oasis') {
                 setStageState('lock-challenge');
+                setCurrentTrack('/audio/question.mp3');
                 setExplanationAccepted(false);
                 setVerificationState('none');
                 setAttempts(0);
@@ -215,6 +273,7 @@ export default function HungerTrialScene({ onComplete }: { onComplete?: () => vo
           </div>
         )}
       </div>
+  
 
       {/* 🔵 RIGHT SIDE: ANGEL CONSOLE */}
       <AngelConsole 

@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useGame } from '../../../context/GameContext';
 import { addLog } from '../../../utils/gameEvents';
-import { askAngelGabriel, generateAdaptiveQuestion, verifyComprehension } from '../../../app/actions/gloo';;
+import { askAngelGabriel, generateAdaptiveQuestion, verifyComprehension } from '../../../app/actions/gloo';
 import CrossroadsMap from './CrossroadsMap';
 import AngelConsole from './AngelConsole';
 
@@ -21,7 +21,13 @@ interface DynamicQuestion {
 }
 
 export default function CrossroadsScene({ onComplete }: { onComplete?: () => void }) {
-  const { setCurrentScreen } = useGame();
+  // 1. NEW: Grab verseChunks from useGame!
+  const { setCurrentScreen, verseChunks, characterPath, displayName, gradeLevel, setCurrentTrack } = useGame();
+
+  // 2. 🎵 Tell the game to play the crossroads music when this scene loads!
+  useEffect(() => {
+    setCurrentTrack('/audio/crossroads.mp3');
+  }, [setCurrentTrack]);
 
   const [stageState, setStageState] = useState('riddle-intro');
   const [explanationAccepted, setExplanationAccepted] = useState(false);
@@ -31,17 +37,53 @@ export default function CrossroadsScene({ onComplete }: { onComplete?: () => voi
   const [currentQuestion, setCurrentQuestion] = useState<DynamicQuestion | null>(null);
   const [attempts, setAttempts] = useState(0);
 
-  const [angelChat, setAngelChat] = useState("Greetings, Traveler! Before you take a single step, you must decode the riddle above. Click the scroll on the left to begin!");
+  const [angelChat, setAngelChat] = useState(`Greetings, ${displayName || 'Traveler'}! Before you take a single step, you must decode the riddle above. Click the scroll on the left to begin!`);
   const [askInput, setAskInput] = useState("");
   const [chatLog, setChatLog] = useState<ChatMessage[]>([]);
   const [isThinking, setIsThinking] = useState(false);
   const [challengeFeedback, setChallengeFeedback] = useState("");
 
-  const [selectedGender] = useState<'girl' | 'boy'>('girl');
-  const characterPath = selectedGender === 'girl' ? "/characters/girlnobackground.png" : "/characters/boynobackground.png";
+  // 2. ADD THE TTS FUNCTION HERE
+  const handleSpeak = () => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel(); 
+      const utterance = new SpeechSynthesisUtterance(angelChat);
+      utterance.rate = 0.9;  
+      utterance.pitch = 1.2; 
+      window.speechSynthesis.speak(utterance);
+    }
+  };
 
   const loadQuestionAndExplanation = async (remedialPrompt: string = "", currentAttemptIndex: number) => {
     setIsThinking(true);
+    
+    if (gradeLevel?.toLowerCase().includes('tk') || currentAttemptIndex >= 1) {
+      setActiveComprehensionQuestion("Do we trust God?");
+      setAngelChat(remedialPrompt ? "Not quite! Let's try an easier one. Do we trust God?" : "Faith means trusting God! Do we trust God?");
+      setCurrentQuestion({
+        question: "Do we trust God?",
+        optionA: "Yes",
+        optionB: "No",
+        correctOption: "A"
+      });
+      setIsThinking(false);
+      return; 
+    }
+
+    // 🌟 2. 2ND-3RD GRADE OVERRIDE (NEW!)
+    if (gradeLevel?.toLowerCase().includes('2') || gradeLevel?.toLowerCase().includes('3')) {
+      setActiveComprehensionQuestion("What is faith?");
+      setAngelChat("Faith is active trust! Let's see if you can fill in the blank.");
+      setCurrentQuestion({
+        question: "Faith is ________.",
+        optionA: "trust",
+        optionB: "cool",
+        correctOption: "A"
+      });
+      setIsThinking(false);
+      return; 
+    }
+
     const conceptName = "Faith";
     const correctRule = "Active loyalty, deep trust, and doing what the Gardener says (taking action).";
     const incorrectRule = "Just memorizing lists of facts and trivia about the Gardener, or passive head-knowledge without movement.";
@@ -60,7 +102,7 @@ export default function CrossroadsScene({ onComplete }: { onComplete?: () => voi
     setActiveComprehensionQuestion(dynamicComprehensionQuestion);
 
     const explanationInstructions = `
-      The player is learning about ${conceptName}. Attempt number ${currentAttemptIndex + 1}.
+      The ${displayName || 'Traveler'} is learning about ${conceptName}. Attempt number ${currentAttemptIndex + 1}.
       ${remedialPrompt ? `REMEDIAL: The child answered incorrectly. ${remedialPrompt} Pivot to why the correct choice was right. End by asking: "${dynamicComprehensionQuestion}"` : `INTRO: Explain "Pistis" (active trust) using this analogy: "${chosenMetaphor}".`}
       Keep the entire message warm and brief (maximum 3 sentences).
     `;
@@ -80,10 +122,11 @@ export default function CrossroadsScene({ onComplete }: { onComplete?: () => voi
 
   const handleChestClick = async () => {
     setStageState('lock-challenge');
+    setCurrentTrack('/audio/question.mp3');
     setExplanationAccepted(false);
     setVerificationState('none');
     setAttempts(0);
-    setAngelChat("Hold on, Traveler! To unlock this chest, we must first learn what Faith truly is. Let me teach you...");
+    setAngelChat(`Hold on, ${displayName || 'Traveler'}! To unlock this chest, we must first learn what Faith truly is. Let me teach you...`);
     await loadQuestionAndExplanation("", 0);
   };
 
@@ -92,7 +135,32 @@ export default function CrossroadsScene({ onComplete }: { onComplete?: () => voi
 
     const chosenText = selectedOption === 'A' ? currentQuestion.optionA : (selectedOption === 'B' ? currentQuestion.optionB : currentQuestion.optionC);
 
-    if (selectedOption === currentQuestion.correctOption) {
+    // 🛡️ CATCH ALTERNATIVE AI KEYS
+    // The AI might be ignoring our interface and using a different word for the answer key!
+    const aiQuestion = currentQuestion as any; 
+    const rawCorrect = String(
+      aiQuestion.correctOption || 
+      aiQuestion.correctAnswer || 
+      aiQuestion.correct_option || 
+      aiQuestion.answer || 
+      aiQuestion.correct || 
+      ""
+    ).trim();
+    
+    // AUTO-REROLL: Only trigger if the AI *truly* forgot to include the answer anywhere
+    if (!rawCorrect || rawCorrect === "undefined") {
+      setChallengeFeedback("Oops! The heavenly static scrambled the answer key. Asking Gabriel for a fresh question...");
+      // Pass an empty string so Gabriel just does a normal re-introduction!
+      await loadQuestionAndExplanation("", attempts);
+      return; 
+    }
+
+    const isCorrect = 
+      selectedOption === rawCorrect.toUpperCase() || 
+      rawCorrect.toUpperCase().startsWith(selectedOption) || 
+      (chosenText && rawCorrect.toLowerCase().includes(chosenText.toLowerCase().trim())); 
+
+    if (isCorrect) {
       setStageState('solved');
       addLog("Successfully broke the lock!", "system");
       setIsThinking(true);
@@ -101,7 +169,9 @@ export default function CrossroadsScene({ onComplete }: { onComplete?: () => voi
         if (res.reply) { setAngelChat(res.reply); setChatLog(prev => [...prev, { sender: 'angel', text: res.reply }]); }
       } finally { setIsThinking(false); }
     } else {
-      const correctText = currentQuestion.correctOption === 'A' ? currentQuestion.optionA : (currentQuestion.correctOption === 'B' ? currentQuestion.optionB : currentQuestion.optionC);
+      const correctText = currentQuestion.optionA; // Fallback text just in case
+      const actualCorrectText = rawCorrect.toUpperCase().includes('A') ? currentQuestion.optionA : (rawCorrect.toUpperCase().includes('B') ? currentQuestion.optionB : currentQuestion.optionC);
+      
       const nextAttempt = attempts + 1;
       setAttempts(nextAttempt);
       setChallengeFeedback("Not quite! Angel Gabriel is testing your understanding in the chat before you can retry.");
@@ -109,7 +179,7 @@ export default function CrossroadsScene({ onComplete }: { onComplete?: () => voi
       setVerificationState('pending-chat'); 
       setAngelChat("That wasn't quite it, Messenger. Answer my question in the chat console on the right so we can clear this up!");
       
-      await loadQuestionAndExplanation(`The question asked: "${currentQuestion.question}". Child chose "${chosenText}" instead of "${correctText}". Explain why.`, nextAttempt);
+      await loadQuestionAndExplanation(`The question asked: "${currentQuestion.question}". Child chose "${chosenText}" instead of "${actualCorrectText || correctText}". Explain why.`, nextAttempt);
     }
   };
 
@@ -151,15 +221,27 @@ export default function CrossroadsScene({ onComplete }: { onComplete?: () => voi
         <div className="w-full flex justify-between items-center bg-slate-800 border-2 border-black p-2 rounded shadow-[2px_2px_0px_#000] shrink-0 mb-4 z-20">
           <div>
             <h3 className="text-[10px] font-black uppercase text-amber-400">Weapon Tracker</h3>
+            {/* 2. NEW: Dynamic Tracker Text */}
             <p className="text-xs font-bold text-slate-200">
-              {stageState === 'solved' ? "Now faith is..." : "[ _ _ _ _ _ ]"}
+              {stageState === 'solved' ? `${verseChunks[0] || "Forging..."}` : "[ _ _ _ _ _ ]"}
             </p>
           </div>
+
+          <div className="flex gap-2">
+            {/* 🔊 THE NEW AUDIO BUTTON */}
+            <button 
+              onClick={handleSpeak}
+              className="bg-blue-500 hover:bg-blue-400 text-white font-bold py-1 px-3 rounded text-xs border border-black shadow-[1px_1px_0px_#000]"
+            >
+              🔊 Read Aloud
+            </button>
+            
           {stageState === 'lock-challenge' && (
             <div className="flex items-center gap-2 bg-slate-900 px-3 py-1 border border-black rounded">
               <span className="text-xl">🔒</span><span className="text-[10px] font-black uppercase text-amber-400">Lock Puzzle</span>
             </div>
           )}
+        </div>
         </div>
 
         {/* SCENE RENDERING AREA */}
@@ -243,7 +325,10 @@ export default function CrossroadsScene({ onComplete }: { onComplete?: () => voi
             <div className="w-full h-full bg-slate-900 flex flex-col items-center justify-center bg-[radial-gradient(#eab308_1px,transparent_1px)] [background-size:16px_16px]">
               <div className="bg-yellow-100 border-4 border-black p-8 shadow-[8px_8px_0px_#000] max-w-sm text-center animate-fade-in text-black">
                 <h2 className="text-2xl font-black mb-2 uppercase tracking-wide text-amber-900">📜 SCROLL UNLOCKED</h2>
-                <p className="text-xl font-bold italic text-slate-800">"Now faith is..."</p>
+                {/* 3. NEW: Dynamic Solved Text */}
+                <p className="text-xl font-bold italic text-slate-800">
+                  "{verseChunks[0] || "Forging..."}"
+                </p>
               </div>
               <div className="w-32 h-32 mt-8 drop-shadow-xl animate-bounce"><img src={characterPath} alt="Character" className="w-full h-full object-contain" /></div>
             </div>

@@ -34,7 +34,7 @@ export default function OnboardingFlow() {
     
     const fallbackVersions: Record<string, BibleVersion[]> = {
       en: [
-        { id: 477, abbreviation: 'ESV', title: 'English Standard Version', language_tag: 'en' },
+        { id: 59, abbreviation: 'ESV', title: 'English Standard Version', language_tag: 'en' },
         { id: 111, abbreviation: 'NIV', title: 'New International Version', language_tag: 'en' },
         { id: 116, abbreviation: 'NLT', title: 'New Living Translation', language_tag: 'en' },
         { id: 1, abbreviation: 'KJV', title: 'King James Version', language_tag: 'en' }
@@ -288,8 +288,8 @@ export default function OnboardingFlow() {
                 { value: 'TK', label: 'TK' },
                 { value: 'K', label: 'Kindergarten' },
                 ...[...Array(12)].map((_, i) => ({
-                  value: `${i + 1}th`,
-                  label: `${i + 1}th Grade`
+                  value: `${i + 1}`,
+                  label: `Grade ${i + 1}`
                 })),
                 { value: 'Adult', label: 'Adult / Parent' } // Moved to the very end of the array!
               ].map((grade) => (

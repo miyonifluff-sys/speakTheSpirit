@@ -25,6 +25,16 @@ interface GameContextType {
   loginMethod: LoginMethod;
   handleLogout: () => void;
 
+  //New: verse chunks state
+  verseChunks: string[];
+  setVerseChunks: (chunks: string[]) => void;
+
+  //avatar tracking
+  avatarUrl: string | null;
+  characterPath: string;
+  displayName: string | null;
+  gradeLevel: string | null;
+
   // Game Logic State
   introStep: number;
   setIntroStep: (step: number) => void;
@@ -71,7 +81,15 @@ interface GameContextType {
   handleBattleAnswer: (answer: string) => void;
   handleUseSwordOfTruth: () => void;
   handleTriggerPortal: () => void;
+
+  isMuted: boolean;
+  setIsMuted: (val: boolean) => void;
+  
+  // 🎵 NEW: Track management
+  currentTrack: string;
+  setCurrentTrack: (trackPath: string) => void;
 }
+
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
 
@@ -85,6 +103,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [userId, setUserId] = useState<string | null>(null);
   const [loginMethod, setLoginMethod] = useState<LoginMethod>(null);
 
+  const[verseChunks, setVerseChunks] = useState<string[]>([]);
   // Gameplay Progress
   const [introStep, setIntroStep] = useState<number>(0);
   const [questObjectClicked, setQuestObjectClicked] = useState<boolean>(false);
@@ -114,6 +133,20 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   // Progression
   const [clearedIslands, setClearedIslands] = useState<string[]>([]);
+
+  // 👤 NEW: State for the avatar URL from Supabase
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState<string | null>(null); // 👈 NEW
+  const [gradeLevel, setGradeLevel] = useState<string | null>(null);
+
+  const [isMuted, setIsMuted] = useState(true);
+  const[currentTrack,setCurrentTrack]= useState ('/audio/crossroads.mp3');
+
+  // 👤 NEW: Derived character path for your 2D sprites!
+  // Defaults to girlnobackground if NULL or not set to boy
+  const characterPath = avatarUrl?.includes('boy') 
+    ? "/characters/boynobackground.png" 
+    : "/characters/girlnobackground.png";
 
   // Visual / Feedback State
   const [feedback, setFeedback] = useState<string>('');
@@ -191,6 +224,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         setCucumbersState(profile.cucumbers ?? 5);
         setTicketsState(profile.tickets ?? 1);
         
+        // 👤 NEW: Save the avatar URL from the database
+        setAvatarUrl(profile.avatar_url || null);
+        setDisplayName (profile.display_name || 'Traveler'); //new
+        setGradeLevel(profile.grade_level || null);
+
         const loadedIslands = profile.clearedIslands || [];
         setClearedIslands(loadedIslands);
         
@@ -404,6 +442,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         loginMethod,
         handleLogout,
 
+        //expose the chunks!
+        verseChunks,
+        setVerseChunks,
+
         introStep,
         setIntroStep,
         questObjectClicked,
@@ -445,6 +487,15 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         handleBattleAnswer,
         handleUseSwordOfTruth,
         handleTriggerPortal,
+
+        avatarUrl,      // 👈 NEW
+        characterPath,  // 👈 NEW
+        displayName,
+        gradeLevel,
+        isMuted,
+        setIsMuted,
+        currentTrack,
+        setCurrentTrack,
       }}
     >
       {children}

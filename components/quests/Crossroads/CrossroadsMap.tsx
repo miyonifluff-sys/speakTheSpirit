@@ -20,6 +20,8 @@ export default function CrossroadsMap({
   // 🎮 Internal Map State
   const [playerPos, setPlayerPos] = useState({ x: 368, y: 550 });
   const playerSpeed = 10;
+  // Put this near your other state variables at the top of the component
+  const [facing, setFacing] = useState<'left' | 'right'>('right');
 
   // 🗺️ WAYPOINTS FOR BOTH MAPS
   const forkWaypoints = [
@@ -74,7 +76,8 @@ export default function CrossroadsMap({
     setPlayerPos((prev) => {
       const targetX = prev.x + dx;
       const targetY = prev.y + dy;
-
+      if (dx < 0) setFacing('left');
+      if (dx > 0) setFacing('right');
       if (targetX < 0 || targetX > 800 || targetY < 0 || targetY > 600) return prev;
 
       if (isPositionOnPath(targetX, targetY)) {
@@ -165,7 +168,7 @@ export default function CrossroadsMap({
               // Dynamically apply grayscale and pulse if they are trapped in the ghosts stage!
               className={`w-full h-full object-contain drop-shadow-xl transition-all ${
                 stageState === 'ghosts' ? 'filter grayscale animate-pulse' : ''
-              }`} 
+              }`} style={{ transform: facing === 'left' ? 'scaleX(-1)' : 'scaleX(1)' }}
             />
           </div>
 

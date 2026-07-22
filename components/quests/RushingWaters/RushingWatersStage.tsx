@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+// 1. NEW: Import the GameContext hook
+import { useGame } from '../../../context/GameContext';
 
 interface RushingWatersStageProps {
   stageState: string;
@@ -18,11 +20,16 @@ export default function RushingWatersStage({
   onOpenChest
 }: RushingWatersStageProps) {
   
+  // 2. NEW: Grab verseChunks from the context
+  const { verseChunks } = useGame();
+
   // 🚶‍♂️ 2D WALKING STATE
   const [playerPos, setPlayerPos] = useState({ x: 50, y: 300 });
   const [bridgeRevealed, setBridgeRevealed] = useState(false);
   const [sinkMessage, setSinkMessage] = useState("");
   const playerSpeed = 15;
+  // Put this near your other state variables at the top of the component
+  const [facing, setFacing] = useState<'left' | 'right'>('right');
 
   // 🌍 SPAWN POINTS
   useEffect(() => {
@@ -36,7 +43,9 @@ export default function RushingWatersStage({
     setPlayerPos((prev) => {
       let targetX = prev.x + dx;
       let targetY = prev.y + dy;
-      
+      // 👈 ADD THESE TWO LINES HERE
+      if (dx < 0) setFacing('left');
+      if (dx > 0) setFacing('right');
       // Screen Boundaries
       if (targetX < 0) targetX = 0;
       if (targetX > 750) targetX = 750;
@@ -183,7 +192,7 @@ export default function RushingWatersStage({
               className="absolute w-24 h-24 -translate-x-1/2 -translate-y-[80%] transition-all duration-75 ease-out z-20 pointer-events-none"
               style={{ left: `${playerPos.x}px`, top: `${playerPos.y}px` }}
             >
-              <img src={characterPath} alt="Character" className="w-full h-full object-contain drop-shadow-[0_10px_8px_rgba(0,0,0,0.5)]" />
+              <img src={characterPath} alt="Character" className="w-full h-full object-contain drop-shadow-[0_10px_8px_rgba(0,0,0,0.5)]" style={{ transform: facing === 'left' ? 'scaleX(-1)' : 'scaleX(1)' }} />
             </div>
 
             {/* On-Screen D-Pad */}
@@ -213,12 +222,9 @@ export default function RushingWatersStage({
       {stageState === 'solved' && (
         <div className="w-full h-full bg-slate-900 flex flex-col items-center justify-center p-6 text-center">
           <div className="bg-blue-100 border-4 border-black p-6 shadow-[8px_8px_0px_#000] max-w-sm text-black">
-            <h2 className="text-xl font-black mb-4 uppercase text-blue-900 border-b-4 border-black pb-2">Conviction (Elenchos)</h2>
-            <p className="text-sm font-bold text-slate-800 text-left mb-4">
-              In ancient courts, an <i>elenchos</i> was physical evidence that forced the truth to light. Faith isn't a blind guess; it is acting on the undeniable character of the Gardener.
-            </p>
+            {/* 3. NEW: Dynamic chunks displaying the final fragment! */}
             <p className="text-lg font-black text-slate-900 bg-white p-2 border-2 border-black shadow-[2px_2px_0px_#000]">
-              "and the conviction of things not seen."
+              "{verseChunks.length > 0 ? verseChunks.join(' ') : 'Forging...'}"
             </p>
           </div>
         </div>

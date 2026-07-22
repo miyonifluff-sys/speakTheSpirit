@@ -64,17 +64,22 @@ export async function askAngelGabriel(
       throw new Error("Could not acquire Gloo access token.");
     }
 
+    // 1. Add display_name to the select string
     const { data: profile } = await supabase
       .from('profiles')
-      .select('grade_level, church_experience')
+      .select('grade_level, church_experience, display_name') 
       .eq('id', userId)
       .single();
 
     const grade = profile?.grade_level || 'an unknown grade';
     const experience = profile?.church_experience || 'unknown';
+    
+    // 2. Safely grab the name, default to "Traveler" if missing
+    const playerName = profile?.display_name || 'Traveler'; 
 
+    // 3. Inject the name into the prompt!
     const fullyFormedPrompt = `
-      You are Angel Gabriel, a warm, encouraging, and witty heavenly messenger guiding a child in the game "Speak the Spirit".
+      You are Angel Gabriel, a warm, encouraging, and witty heavenly messenger guiding a child named ${playerName} in the game "Speak the Spirit".
       The player is in ${grade} and their church experience level is: "${experience}".
       
       ${systemInstructions}
@@ -399,5 +404,67 @@ export async function verifyComprehension(
         reply: "The heavenly static is a bit loud right now, I couldn't quite hear that! Can you try explaining it one more time?"
       }
     };
+  }
+}
+
+// app/actions/gloo.ts (Append this function)
+
+export async function chunkVerseWithGloo(verseText: string): Promise<string[]> {
+  try {
+    const accessToken = await getGlooAccessToken();
+    if (!accessToken) throw new Error("Could not acquire Gloo token.");
+
+    const systemPrompt = `
+      You are a specialized game engine parser for a scripture memory game.
+      Your task is to break down a Bible verse text into sequential, natural, semantic chunks optimal for a child to memorize step-by-step.
+      
+      CRITICAL INSTRUCTION FOR HEBREWS 11:1:
+      If the text provided is Hebrews 11:1, you MUST divide the text into exactly 3 sequential chunks based on these specific themes:
+      1) The introduction of faith (e.g., "Now faith is" or "Faith shows the reality"). DO NOT INCLUDE confidence/assurance in what we hope for.
+      2) The assurance/confidence in what we hope for (e.g., "the assurance of things hoped for," or "of what we hope for;")
+      3) The conviction/evidence of things we cannot see (e.g., "the conviction of things not seen." or "it is the evidence of things we cannot see.")
+      
+      General Rules for other verses:
+      1. Divide the sentence at natural punctuation marks, clauses, or logical breathing breaks.
+      2. Provide a minimum of 2 and a maximum of 4 sequential chunks.
+      
+      Return a strict, valid JSON object containing an array under the key "chunks". Do not include markdown code blocks.
+      
+      Example Expected JSON format:
+      {
+        "chunks": ["Now faith is", "the assurance of things hoped for,", "the conviction of things not seen."]
+      }
+    `;
+
+    const url = "https://platform.ai.gloo.com/ai/v2/chat/completions";
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        "Authorization": `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        auto_routing: true,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `Parse this verse text: "${verseText}"` }
+        ],
+        temperature: 0.2 // Kept low for consistent formatting
+      }),
+      signal: AbortSignal.timeout(12000)
+    });
+
+    if (!response.ok) throw new Error("Gloo failed parsing the verse.");
+
+    const data = await response.json();
+    const rawText = data.choices[0].message.content.trim();
+    const cleanJsonText = rawText.replace(/^```json\s*|```$/g, '');
+    const parsedData = JSON.parse(cleanJsonText);
+
+    return parsedData.chunks || [verseText]; // Fallback to full verse if structure fails
+  } catch (error) {
+    console.error("❌ Error chunking verse with Gloo:", error);
+    // Hardcoded layout fallback if network/parsing drops out
+    return verseText.split(',').map(s => s.trim());
   }
 }

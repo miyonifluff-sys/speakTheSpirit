@@ -50,7 +50,7 @@ export default function OverworldMap() {
             </div>
             <div>
               <h3 className="font-black text-lg leading-tight">Basecamp Castle</h3>
-              <p className="text-xs font-medium mt-1 text-black/80">Buy gear like Tickets, Sword of Truth, or Holy Water.</p>
+              <p className="text-xs font-medium mt-1 text-black/80">Buy gear like Tickets or power ups to save more songbeasts.</p>
             </div>
           </button>
 
