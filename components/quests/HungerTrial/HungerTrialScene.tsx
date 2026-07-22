@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useGame } from '../../../context/GameContext';
 import { addLog } from '../../../utils/gameEvents';
 import { askAngelGabriel, generateAdaptiveQuestion, verifyComprehension } from '../../../app/actions/gloo';
@@ -21,7 +21,12 @@ interface DynamicQuestion {
 }
 
 export default function HungerTrialScene({ onComplete }: { onComplete?: () => void }) {
-  const { setCurrentScreen, characterPath, displayName, gradeLevel } = useGame();
+  const { setCurrentScreen, characterPath, displayName, gradeLevel, setCurrentTrack } = useGame();
+
+  //change music when they enter the desert
+  useEffect(() => {
+    setCurrentTrack('/audio/hunger.mp3');
+  }, [setCurrentTrack]);
 
   const [stageState, setStageState] = useState('riddle-intro');
   const [selectedAction, setSelectedAction] = useState<'fishing' | 'fruit' | null>(null);
@@ -77,7 +82,7 @@ export default function HungerTrialScene({ onComplete }: { onComplete?: () => vo
       setCurrentQuestion({
         question: "God ________ about our needs.",
         optionA: "doesn't care",
-        optionB: "provides",
+        optionB: "cares",
         correctOption: "B"
       });
       setIsThinking(false);
@@ -224,6 +229,7 @@ export default function HungerTrialScene({ onComplete }: { onComplete?: () => vo
               // 🔄 Dynamic router check added here to control the map-to-scroll transitions safely:
               if (stageState === 'chest-oasis') {
                 setStageState('lock-challenge');
+                setCurrentTrack('/audio/question.mp3');
                 setExplanationAccepted(false);
                 setVerificationState('none');
                 setAttempts(0);

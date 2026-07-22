@@ -81,7 +81,15 @@ interface GameContextType {
   handleBattleAnswer: (answer: string) => void;
   handleUseSwordOfTruth: () => void;
   handleTriggerPortal: () => void;
+
+  isMuted: boolean;
+  setIsMuted: (val: boolean) => void;
+  
+  // 🎵 NEW: Track management
+  currentTrack: string;
+  setCurrentTrack: (trackPath: string) => void;
 }
+
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
 
@@ -130,6 +138,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null); // 👈 NEW
   const [gradeLevel, setGradeLevel] = useState<string | null>(null);
+
+  const [isMuted, setIsMuted] = useState(true);
+  const[currentTrack,setCurrentTrack]= useState ('/audio/crossroads.mp3');
 
   // 👤 NEW: Derived character path for your 2D sprites!
   // Defaults to girlnobackground if NULL or not set to boy
@@ -481,6 +492,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         characterPath,  // 👈 NEW
         displayName,
         gradeLevel,
+        isMuted,
+        setIsMuted,
+        currentTrack,
+        setCurrentTrack,
       }}
     >
       {children}

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useGame } from '../../../context/GameContext';
 import { addLog } from '../../../utils/gameEvents';
 import { askAngelGabriel, generateAdaptiveQuestion, verifyComprehension } from '../../../app/actions/gloo';
@@ -21,9 +21,13 @@ interface DynamicQuestion {
 }
 
 export default function RushingWatersScene({ onComplete }: { onComplete?: () => void }) {
-  const { setCurrentScreen, characterPath, gradeLevel } = useGame();
+  const { setCurrentScreen, characterPath, gradeLevel, setCurrentTrack } = useGame();
 
   const [stageState, setStageState] = useState('riddle-intro');
+
+  useEffect(() => {
+    setCurrentTrack('/audio/waters.mp3');
+  }, [setCurrentTrack]);
 
   // 🧠 AI & GLOO STATES
   const [explanationAccepted, setExplanationAccepted] = useState(false);
@@ -218,6 +222,7 @@ export default function RushingWatersScene({ onComplete }: { onComplete?: () => 
             }}
             onOpenChest={async () => {
               setStageState('lock-challenge');
+              setCurrentTrack('/audio/question.mp3');
               setExplanationAccepted(false);
               setVerificationState('none');
               setAttempts(0);

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useGame } from '../../../context/GameContext';
 import { addLog } from '../../../utils/gameEvents';
 import { askAngelGabriel, generateAdaptiveQuestion, verifyComprehension } from '../../../app/actions/gloo';
@@ -22,7 +22,12 @@ interface DynamicQuestion {
 
 export default function CrossroadsScene({ onComplete }: { onComplete?: () => void }) {
   // 1. NEW: Grab verseChunks from useGame!
-  const { setCurrentScreen, verseChunks, characterPath, displayName, gradeLevel } = useGame();
+  const { setCurrentScreen, verseChunks, characterPath, displayName, gradeLevel, setCurrentTrack } = useGame();
+
+  // 2. 🎵 Tell the game to play the crossroads music when this scene loads!
+  useEffect(() => {
+    setCurrentTrack('/audio/crossroads.mp3');
+  }, [setCurrentTrack]);
 
   const [stageState, setStageState] = useState('riddle-intro');
   const [explanationAccepted, setExplanationAccepted] = useState(false);
@@ -117,6 +122,7 @@ export default function CrossroadsScene({ onComplete }: { onComplete?: () => voi
 
   const handleChestClick = async () => {
     setStageState('lock-challenge');
+    setCurrentTrack('/audio/question.mp3');
     setExplanationAccepted(false);
     setVerificationState('none');
     setAttempts(0);
