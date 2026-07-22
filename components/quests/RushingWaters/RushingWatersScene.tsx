@@ -43,13 +43,13 @@ export default function RushingWatersScene({ onComplete }: { onComplete?: () => 
   const loadQuestionAndExplanation = async (remedialPrompt: string = "", currentAttemptIndex: number) => {
     setIsThinking(true);
     
-    const conceptName = "Conviction of things not seen.";
+    const conceptName = "Trusting in things not seen.";
     const correctRule = "Trusting in the Gardener and His promises, even when your eyes see absolutely nothing.";
     const incorrectRule = "Trusting only in your own physical sight, tools, and abilities to make a bridge or boat.";
 
     const metaphors = [
       "Sometimes you have faith in things you can't actually see with your eyes! Just like gravity or a radio frequency, just because you can't see it doesn't mean it isn't real and holding you up.",
-      "A conviction is undeniable proof. The Gardener's character is our proof, even when the river looks scary!",
+      "We can be sure something esists without seeing it physically. The Gardener's character is our proof, even when the river looks scary!",
     ];
     
     const chosenMetaphor = metaphors[currentAttemptIndex % metaphors.length];
@@ -62,7 +62,7 @@ export default function RushingWatersScene({ onComplete }: { onComplete?: () => 
     const explanationInstructions = `
       The player is learning about "${conceptName}". Attempt number ${currentAttemptIndex + 1}.
       They just crossed a rushing river on an invisible bridge.
-      ${remedialPrompt ? `REMEDIAL: ${remedialPrompt} End by asking: "${dynamicComprehensionQuestion}"` : `INTRO: Explain the concept of Conviction (Elenchos) and 'things not seen' using this analogy: "${chosenMetaphor}".`}
+      ${remedialPrompt ? `REMEDIAL: ${remedialPrompt} End by asking: "${dynamicComprehensionQuestion}"` : `INTRO: Explain the concept of 'things not seen' using this analogy: "${chosenMetaphor}".`}
       Keep the entire message warm and brief (maximum 3 sentences).
     `;
 
@@ -85,7 +85,7 @@ export default function RushingWatersScene({ onComplete }: { onComplete?: () => 
 
     if (selectedOption === currentQuestion.correctOption) {
       setStageState('solved');
-      addLog("Mastered the Conviction concept!", "system");
+      addLog("Mastered 'things not seen' concept!", "system");
       setIsThinking(true);
       try {
         const res = await askAngelGabriel("user_123", "Explain why my correct answer was right!", `Player chose: "${chosenText}". Celebrate briefly and mention we are ready to battle the silencer.`);
@@ -114,7 +114,7 @@ export default function RushingWatersScene({ onComplete }: { onComplete?: () => 
 
     if (verificationState === 'pending-chat') {
       try {
-        const res = await verifyComprehension("user_123", activeComprehensionQuestion, currentQuestionText, "Conviction means acting on the unseen realities promised by the Gardener.");
+        const res = await verifyComprehension("user_123", activeComprehensionQuestion, currentQuestionText, "Conviction/Assurance means acting on the unseen realities promised by the Gardener.");
         if (res.evaluation) {
           setChatLog(prev => [...prev, { sender: 'angel', text: res.evaluation.reply }]);
           if (res.evaluation.isUnderstood) {
